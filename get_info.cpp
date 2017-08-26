@@ -10,12 +10,14 @@
 using namespace std;
 
 void print(glm::mat4 matrix);
+bool initResources();
+void onDisplay();
 
 int main(int argc, char* argv[]){
     glutInit(&argc, argv);
     glutInitContextVersion(2,0);
     glutInitDisplayMode(GLUT_RGBA | GLUT_ALPHA | GLUT_DOUBLE | GLUT_DEPTH);
-    glutInitWindowSize(0, 0);
+    glutInitWindowSize(400, 400);
     glutCreateWindow("Nuevo OpenGL");
 
     GLenum glew_status = glewInit();
@@ -60,6 +62,12 @@ int main(int argc, char* argv[]){
 	print(matrixB);
 	memcpy(glm::value_ptr(matrixB), v, sizeof(float) * 16);
 	print(matrixB);
+	
+	if (initResources()) {
+		glutDisplayFunc(onDisplay);
+		glutMainLoop();
+	}
+	
     exit(EXIT_SUCCESS);
 }
 
@@ -72,4 +80,14 @@ void print(glm::mat4 matrix) {
 		cout << endl;
 	}
 	cout << endl;
+}
+
+bool initResources() {
+	return true;
+}
+
+void onDisplay() {
+	glClearColor(0.5, 0.3, 1, 1);
+	glClear(GL_COLOR_BUFFER_BIT);
+	glutSwapBuffers();
 }
