@@ -15,8 +15,11 @@ GLint program;
 
 GLint attribute_coord2d;
 
+GLint uniform_t;
+float t = 0;
+
 bool init_resources(){
-	GLfloat vertices[]={
+	GLfloat vertices[] = {
 		0.0, 0.0,
 		0.5, 0.0,
 		0.25, 0.5
@@ -47,9 +50,22 @@ bool init_resources(){
 		cout << "Variable de coordenadas no especificada" << endl;
 		return false;
 	}
+	
+	uniform_t = glGetUniformLocation(program, "t");
+	if (uniform_t == -1) {
+		cout << "Variable uniforme no especificada" << endl;
+		return false;
+	}
 
 	return true;
 	
+}
+
+void keyboard(unsigned char key, int x, int y) {
+	if (key == 'd') {
+		t += 0.05;
+		glutPostRedisplay();
+	}
 }
 
 void onDisplay(){
@@ -66,6 +82,8 @@ void onDisplay(){
 		GL_FALSE,
 		0,0);
 
+	glUniform1f(uniform_t, t);
+		
 	glDrawArrays(GL_TRIANGLES, 0, 3);
 	glDisableVertexAttribArray(attribute_coord2d);
 
@@ -100,6 +118,7 @@ int main(int argc, char* argv[]){
     	glEnable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		glutKeyboardFunc(keyboard);
     	glutMainLoop();
     }
 

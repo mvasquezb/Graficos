@@ -1,7 +1,9 @@
 #version 450
 
 in vec2 coord2d;
+uniform float t;
 
 void main(void){
-    gl_Position = vec4(coord2d, 0, 1);
+	vec2 new_coord = coord2d + t;
+    gl_Position = vec4(new_coord, 0, 1);
 }
