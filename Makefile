@@ -32,7 +32,7 @@ clean:
 	-rm -f libGLEW.so.1.13
 
 run: $(TARGET)
-	LD_LIBRARY_PATH=$(BASE_DIR) ./$(TARGET)
+	LD_LIBRARY_PATH=. ./$(TARGET)
 
 optirun: $(TARGET)
-	LD_LIBRARY_PATH=$(BASE_DIR) optirun ./$(TARGET)
+	LD_LIBRARY_PATH=. optirun ./$(TARGET)
