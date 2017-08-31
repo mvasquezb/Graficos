@@ -31,8 +31,8 @@ clean:
 	-rm -f libfreeglut.so.3
 	-rm -f libGLEW.so.1.13
 
-run:
+run: $(TARGET)
 	LD_LIBRARY_PATH=$(BASE_DIR) ./$(TARGET)
 
-optirun:
+optirun: $(TARGET)
 	LD_LIBRARY_PATH=$(BASE_DIR) optirun ./$(TARGET)
