@@ -1,2 +1,8 @@
 vertex shader
 cpu gpu bridge
+
+geometry per object
+buffer per object
+objects drawn separately
+
+shaders are shared
