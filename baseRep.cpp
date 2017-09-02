@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <vector>
 #include <cstdio>
+#include <algorithm>
 
 #include <GL/glew.h>
 #include <GL/freeglut.h>
@@ -10,9 +11,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include "shader_utils.h"
 
-GLuint vbo_object;
-GLuint vbo_color;
-GLuint ibo_object;
+using namespace std;
 
 GLuint program;
 GLint attribute_coord;
@@ -30,15 +29,44 @@ int screen_width = 800, screen_height = 800;
 #define MAXV 100000
 #define MAXT 100000
 
+float xmin = 1e09,
+      xmax = -1e09,
+      ymin = 1e09,
+      ymax = -1e09,
+      zmin = 1e09,
+      zmax = -1e09;
+
+GLuint vbo_object;
+GLuint vbo_color;
+GLuint ibo_object;
+
 GLfloat vertices[MAXV][3];
 GLushort triangles[MAXT][3];
-
-float xmin=1e09, xmax=-1e09, ymin=1e09, ymax=-1e09, zmin=1e09, zmax=-1e09;
 
 int numVertices = 0;
 int numTriangles = 0;
 
-void read_off_file(const char* filename){
+/**
+ * Second object vars
+ */
+
+GLuint vbo_object2;
+GLuint ibo_object2;
+
+GLfloat vertices2[MAXV][3];
+GLushort triangles2[MAXT][3];
+
+int numVertices2 = 0;
+int numTriangles2 = 0;
+/**
+ * End second object vars
+ */
+
+void read_off_file(const char* filename,
+                   GLfloat vertices[MAXV][3],
+                   GLushort triangles[MAXT][3],
+                   int& numVertices,
+                   int& numTriangles) {
     FILE* fp = fopen(filename, "rt");
     char buffer[100];
 
@@ -47,16 +75,19 @@ void read_off_file(const char* filename){
     int aux;
 
     //Leer #vertices, #triangulos, #aristas
+    cout << numVertices << " " << numTriangles << endl;
     fscanf(fp, "%d %d %d", &numVertices, &numTriangles, &aux);
-
+    cout << numVertices << " " << numTriangles << endl;
     for(int i = 0; i < numVertices; i++){
         fscanf(fp, "%f %f %f", &vertices[i][0], &vertices[i][1], &vertices[i][2]);
-        if(vertices[i][0] < xmin)	xmin = vertices[i][0];
-        if(vertices[i][0] > xmax)	xmax = vertices[i][0];
-        if(vertices[i][1] < ymin)	ymin = vertices[i][1];
-        if(vertices[i][1] > ymax)	ymax = vertices[i][1];
-        if(vertices[i][2] < zmin)	zmin = vertices[i][2];
-        if(vertices[i][2] > zmax)	zmax = vertices[i][2];
+        xmin = min(xmin, vertices[i][0]);
+        xmax = max(xmax, vertices[i][0]);
+        
+        ymin = min(ymin, vertices[i][1]);
+        ymax = max(ymax, vertices[i][1]);
+
+        zmin = min(zmin, vertices[i][2]);
+        zmax = max(zmax, vertices[i][2]);
     }
 
     for(int i = 0; i < numTriangles; i++){
@@ -68,7 +99,7 @@ void read_off_file(const char* filename){
 
 
 bool init_resources(){
-    read_off_file("NR0.off");
+    read_off_file("NR0.off", vertices, triangles, numVertices, numTriangles);
 
     glGenBuffers(1, &vbo_object);
     glBindBuffer(GL_ARRAY_BUFFER, vbo_object);
@@ -82,6 +113,27 @@ bool init_resources(){
 		triangles,
 		GL_STATIC_DRAW
 	);
+
+    /**
+     * Second object
+     */
+    read_off_file("NR34.off", vertices2, triangles2, numVertices2, numTriangles2);
+
+    glGenBuffers(1, &vbo_object2);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_object2);
+    glBufferData(GL_ARRAY_BUFFER, numVertices2 * 3 * sizeof(GLfloat), vertices2, GL_STATIC_DRAW);
+
+    glGenBuffers(1, &ibo_object2);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo_object2);
+    glBufferData(
+        GL_ELEMENT_ARRAY_BUFFER,
+        numTriangles2 * 3 * sizeof(GLushort),
+        triangles2,
+        GL_STATIC_DRAW
+    );
+    /**
+     * End second object
+     */
 
     GLint link_ok = GL_FALSE;
     GLuint vs, fs;
@@ -187,6 +239,30 @@ void onDisplay(){
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo_object);
     glDrawElements(GL_TRIANGLES, numTriangles * 3, GL_UNSIGNED_SHORT, 0);
+
+
+    /**
+     * Second object
+     */
+    glm::mat4 mvp2 = projection * view * glm::translate(glm::mat4(1.0f), glm::vec3(-1.0f, 0.0f, 2.0f));
+    glUniformMatrix4fv(uniform_mvp, 1, GL_FALSE, glm::value_ptr(mvp2));
+
+    glEnableVertexAttribArray(attribute_coord);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_object2);
+
+    glVertexAttribPointer(
+        attribute_coord,
+        3,
+        GL_FLOAT,
+        GL_FALSE,
+        0, 0
+    );
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo_object2);
+    glDrawElements(GL_TRIANGLES, numTriangles2 * 3, GL_UNSIGNED_SHORT, 0);
+    /**
+     * End second object
+     */
 
 
     glDisableVertexAttribArray(attribute_coord);
