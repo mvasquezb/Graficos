@@ -1,6 +1,7 @@
 TARGET=get_info
-LIBS=-L"C:\Users\alulab14.INF\Downloads\freeglut\lib" -lfreeglut  -L"C:\Users\alulab14.INF\Downloads\glew-1.13.0\src" -lglew -lglu32 -lopengl32
-CFLAGS=-I"C:\Users\alulab14.INF\Downloads\freeglut\include" -I"C:\Users\alulab14.INF\Downloads\glew-1.13.0\include" -I"C:\Users\alulab14.INF\Downloads\glm-0.9.7.3\glm"
+BASE_DIR=C:/Users/alulab14.INF/Downloads/.Code/Graficos
+LIBS=-L"$(BASE_DIR)/freeglut/lib" -lfreeglut  -L"$(BASE_DIR)/glew/src" -lglew -lglu32 -lopengl32
+CFLAGS=-I"$(BASE_DIR)/freeglut/include" -I"$(BASE_DIR)/glew/include" -I"$(BASE_DIR)/glm"
 CSTD=-std=c++11
 
 .PHONY: default all clean
