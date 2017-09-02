@@ -38,7 +38,7 @@ float xmin=1e09, xmax=-1e09, ymin=1e09, ymax=-1e09, zmin=1e09, zmax=-1e09;
 int numVertices = 0;
 int numTriangles = 0;
 
-void read_file(const char* filename){
+void read_off_file(const char* filename){
     FILE* fp = fopen(filename, "rt");
     char buffer[100];
 
@@ -68,8 +68,7 @@ void read_file(const char* filename){
 
 
 bool init_resources(){
-
-    read_file("NR0.off");
+    read_off_file("NR0.off");
 
     glGenBuffers(1, &vbo_object);
     glBindBuffer(GL_ARRAY_BUFFER, vbo_object);
@@ -77,13 +76,20 @@ bool init_resources(){
 
     glGenBuffers(1, &ibo_object);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo_object);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER,
-                 numTriangles * 3 * sizeof(GLushort), triangles, GL_STATIC_DRAW);
+    glBufferData(
+		GL_ELEMENT_ARRAY_BUFFER,
+        numTriangles * 3 * sizeof(GLushort),
+		triangles,
+		GL_STATIC_DRAW
+	);
 
     GLint link_ok = GL_FALSE;
     GLuint vs, fs;
-    if((vs = create_shader("basic.v.glsl", GL_VERTEX_SHADER))==0) return false;
-    if((fs = create_shader("basic.f.glsl", GL_FRAGMENT_SHADER))==0) return false;
+	vs = create_shader("basic.v.glsl", GL_VERTEX_SHADER);
+	fs = create_shader("basic.f.glsl", GL_FRAGMENT_SHADER);
+	
+    if(!vs || !fs)
+		return false;
 
     program = glCreateProgram();
     glAttachShader(program, vs);
@@ -151,7 +157,7 @@ void onDisplay(){
     //Creamos matrices de modelo, vista y proyeccion
     glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -1.0f));
     glm::mat4 view  = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    glm::mat4 projection = glm::perspective(45.0f, 1.0f*screen_width/screen_height, 0.1f, 10.0f);
+    glm::mat4 projection = glm::perspective(45.0f, 1.0f * screen_width/screen_height, 0.1f, 10.0f);
     glm::mat4 mvp = projection * view * model;
 
     glClearColor(1.0, 1.0, 1.0, 1.0);
