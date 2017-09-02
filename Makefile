@@ -1,22 +1,20 @@
-TARGET=get_info
+TARGET=baseRep
 BASE_DIR=C:/Users/alulab14.INF/Downloads/.Code/Graficos
 LIBS=-L"$(BASE_DIR)/freeglut/lib" -lfreeglut  -L"$(BASE_DIR)/glew/src" -lglew -lglu32 -lopengl32
 CFLAGS=-I"$(BASE_DIR)/freeglut/include" -I"$(BASE_DIR)/glew/include" -I"$(BASE_DIR)/glm"
-CSTD=-std=c++11
 
 .PHONY: default all clean
 
 default: $(TARGET)
 all: default
 
-OBJECTS = get_info.o
+OBJECTS = baseRep.o shader_utils.o
 HEADERS =
 
-%.o:	%.cpp	$(HEADERS)
-	g++ -c $< -o $@ $(CFLAGS)
+%.o:	%.cpp $(HEADERS)
+	g++ $(CFLAGS) -c $< -o $@
 
-
-$(TARGET): $(OBJECTS)
+$(TARGET):	$(OBJECTS)
 	g++ $(OBJECTS) $(LIBS) -o $@
 
 clean:
