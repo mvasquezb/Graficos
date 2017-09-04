@@ -1,5 +1,5 @@
-TARGET=get_info
-BASE_DIR=/home/pmvb/Code/Graficos
+TARGET=lab1
+BASE_DIR=/home/alulab/Code/Graficos
 
 FREEGLUT_LIB_DIR=$(BASE_DIR)/freeglut/lib
 GLEW_LIB_DIR=$(BASE_DIR)/glew/lib
@@ -13,7 +13,7 @@ CSTD=-std=c++11
 default: $(TARGET)
 all: default
 
-OBJECTS = get_info.o
+OBJECTS = lab1.o shader_utils.o
 HEADERS =
 
 %.o:	%.cpp	$(HEADERS)
