@@ -5,8 +5,7 @@ FREEGLUT_LIB_DIR=$(BASE_DIR)/freeglut/lib
 GLEW_LIB_DIR=$(BASE_DIR)/glew/lib
 
 LIBS=-L"$(FREEGLUT_LIB_DIR)" -lfreeglut  -L"$(GLEW_LIB_DIR)" -lGLEW -lGLU -lGL
-CFLAGS=-I"$(BASE_DIR)/freeglut/include" -I"$(BASE_DIR)/glew/include" -I"$(BASE_DIR)/glm"
-CSTD=-std=c++11
+CFLAGS=-I"$(BASE_DIR)/freeglut/include" -I"$(BASE_DIR)/glew/include" -I"$(BASE_DIR)/glm" -std=c++11
 
 .PHONY: default all clean
 
