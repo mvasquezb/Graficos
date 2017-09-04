@@ -156,6 +156,7 @@ void onDisplay() {
 
     glUniform1f(uniform_t, t);
 
+    // Changed draw mode from GL_TRIANGLES to GL_POLYGON, and set offsets to read from
     glDrawArrays(GL_POLYGON, 0, 4);
     glDrawArrays(GL_POLYGON, 4, 4);
     glDrawArrays(GL_POLYGON, 8, 4);
