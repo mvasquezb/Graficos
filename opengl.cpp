@@ -50,7 +50,7 @@ bool init_resources(){
 		cout << "Variable de coordenadas no especificada" << endl;
 		return false;
 	}
-	
+
 	uniform_t = glGetUniformLocation(program, "t");
 	if (uniform_t == -1) {
 		cout << "Variable uniforme no especificada" << endl;
@@ -83,7 +83,7 @@ void onDisplay(){
 		0,0);
 
 	glUniform1f(uniform_t, t);
-		
+
 	glDrawArrays(GL_TRIANGLES, 0, 3);
 	glDisableVertexAttribArray(attribute_coord2d);
 
@@ -118,7 +118,7 @@ int main(int argc, char* argv[]){
     	glEnable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		glutKeyboardFunc(keyboard);
+	glutKeyboardFunc(keyboard);
     	glutMainLoop();
     }
 
