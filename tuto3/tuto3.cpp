@@ -21,7 +21,7 @@ GLint attribute_coord2d;
 // float t = 0;
 
 GLuint mvpMatrixId;
-glm::mat4 projection;
+// glm::mat4 projection;
 glm::mat4 view;
 glm::mat4 model;
 glm::mat4 mvpMatrix;
@@ -67,7 +67,7 @@ bool initResources() {
 
 	mvpMatrixId = glGetUniformLocation(program, "mvp");
 	// Projection matrix : 45° Field of View, 4:3 ratio, display range : 0.1 unit <-> 100 units
-	projection = glm::perspective(glm::radians(45.0f), 4.0f / 3.0f, 0.1f, 100.0f);
+	// projection = glm::perspective(glm::radians(45.0f), 4.0f / 3.0f, 0.1f, 100.0f);
 	// Or, for an ortho camera :
 	//glm::mat4 projection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 0.0f, 100.0f); // In world coordinates
 
@@ -83,7 +83,7 @@ bool initResources() {
 
 	// ModelViewProjection matrix
 	// mvpMatrix = projection * view * model;
-	mvpMatrix = projection * view * model;
+	mvpMatrix = view * model;
 
 	return true;
 	
@@ -97,7 +97,8 @@ void onKeyPress(unsigned char key, int x, int y) {
 		}
 		case 'd': {
 			model = glm::translate(model, glm::vec3(0.05, 0, 0));
-			mvpMatrix = projection * view * model;
+			// mvpMatrix = projection * view * model;
+			mvpMatrix = view * model;
 			glutPostRedisplay();
 			break;
 		}
