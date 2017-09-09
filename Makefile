@@ -1,5 +1,5 @@
-TARGET=get_info
-BASE_DIR=/home/pmvb/Code/Graficos
+TARGET=curva
+BASE_DIR=/home/alulab/Code/Graficos
 
 FREEGLUT_LIB_DIR=$(BASE_DIR)/freeglut/lib
 GLEW_LIB_DIR=$(BASE_DIR)/glew/lib
@@ -13,7 +13,7 @@ CSTD=-std=c++11
 default: $(TARGET)
 all: default
 
-OBJECTS = get_info.o
+OBJECTS = curva.o shader_utils.o
 HEADERS =
 
 %.o:	%.cpp	$(HEADERS)
@@ -32,7 +32,7 @@ clean:
 	-rm -f libGLEW.so.1.13
 
 run: $(TARGET)
-	LD_LIBRARY_PATH=$(BASE_DIR) ./$(TARGET)
+	LD_LIBRARY_PATH=. ./$(TARGET)
 
 optirun: $(TARGET)
-	LD_LIBRARY_PATH=$(BASE_DIR) optirun ./$(TARGET)
+	LD_LIBRARY_PATH=. optirun ./$(TARGET)
