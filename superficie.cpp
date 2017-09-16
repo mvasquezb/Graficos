@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <cmath>
 #include <vector>
+#include <utility>
 
 #include <GL/glew.h>
 #include <GL/freeglut.h>
@@ -12,35 +13,24 @@
 
 class Surface {
 public:
-    Surface(int nSteps) {
-        numSteps = nSteps;
-        numPoints = 3 * (nSteps + 1);
-        numColors = 3 * (nSteps + 1);
-        points = new GLfloat[3 * (nSteps + 1)];
-        colors = new GLfloat[3 * (nSteps + 1)];
-    }
     ~Surface() {
         clearBuffers();
-        delete[] this->points;
-        delete[] this->colors;
     }
     void clearBuffers() {
         glDeleteBuffers(1, &vbo_surface);
         glDeleteBuffers(1, &vbo_color);
     }
     void bindDataTo(GLint attribId) {
-        glEnableVertexAttribArray(attribId);
         glBindBuffer(GL_ARRAY_BUFFER, vbo_surface);
         glVertexAttribPointer(
             attribId,
-            2,
+            3,
             GL_FLOAT,
             GL_FALSE,
             0, 0
         );
     }
     void bindColorTo(GLint attribId) {
-        glEnableVertexAttribArray(attribId);
         glBindBuffer(GL_ARRAY_BUFFER, vbo_color);
         glVertexAttribPointer(
             attribId,
@@ -53,25 +43,24 @@ public:
     void configBufferData() {
         glGenBuffers(1, &vbo_surface);
         glBindBuffer(GL_ARRAY_BUFFER, vbo_surface);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * numPoints, points, GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * points.size(), &points[0], GL_STATIC_DRAW);
     }
     void configBufferColor() {
         glGenBuffers(1, &vbo_color);
         glBindBuffer(GL_ARRAY_BUFFER, vbo_color);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * numColors, colors, GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * colors.size(), &colors[0], GL_STATIC_DRAW);
     }
     void drawArrays() {
         glBindBuffer(GL_ARRAY_BUFFER, vbo_surface);
-        glDrawArrays(GL_LINE_STRIP, 0, numSteps + 1);
+        glDrawArrays(GL_LINE_STRIP, 0, points.size() / 3);
     }
 
 
     GLuint vbo_surface;
     GLuint vbo_color;
-    GLfloat *points;
-    GLfloat *colors;
+    std::vector<GLfloat> points;
+    std::vector<GLfloat> colors;
     int numSteps;
-    int numPoints;
     int numColors;
 };
 
@@ -82,9 +71,6 @@ GLuint program;
 
 GLint attribute_coord3d;
 GLint attribute_color;
-
-GLfloat* surface_vertices;
-GLfloat* surface_color;
 
 int screen_width = 800, screen_height = 800;
 
@@ -111,29 +97,60 @@ GLfloat cp[4][4][3] = {
 };
 
 int nSteps = 100;
+// int numPoints;
 int factorial[4] = {1, 1, 2, 6};
 
 Surface *surface;
 
+float dx = 0, dy = 0, dz = 0;
+float scale = 1;
+
 float binomial(int n, int i) {
-    return factorial[n] / (float) (factorial[i] * factorial[n - i]);
+    return 1.0 * factorial[n] / (factorial[i] * factorial[n - i]);
 }
 
 float bernstein(int n, int i, float t) {
-    return binomial(n, i) * std::powf(t, i) * std::powf(1 - t, n - i);
+    return binomial(n, i) * powf(t, i) * powf(1 - t, n - i);
 }
 
 bool initResources(){
-    surface = new Surface(nSteps);
+    surface = new Surface();
 
     float u = 0;
-    float v = 0;
 
     for (int i = 0; i <= nSteps; i++) {
+        float v = 0;
         for (int j = 0; j <= nSteps; j++) {
-            
+            float x = 0, y = 0, z = 0;
+
+            for (int k = 0; k < 4; ++k) {
+                float bi = bernstein(3, k, u);
+
+                for (int l = 0; l < 4; ++l) {
+                    float bj = bernstein(3, l, v);
+                    x += bi * bj * cp[k][l][0];
+                    y += bi * bj * cp[k][l][1];
+                    z += bi * bj * cp[k][l][2];
+                }
+            }
+
+            surface->points.push_back(x);
+            surface->points.push_back(y);
+            surface->points.push_back(z);
+
+            v += 1.0/nSteps;
         }
+        u += 1.0/nSteps;
     }
+
+    for (int i = 0; i < surface->points.size() / 3; ++i) {
+        surface->colors.push_back(0.0);
+        surface->colors.push_back(1.0);
+        surface->colors.push_back(0.0);
+    }
+
+    surface->configBufferData();
+    surface->configBufferColor();
 
 	GLint link_ok = GL_FALSE;
     GLuint vs, fs;
@@ -180,9 +197,11 @@ bool initResources(){
 
 void onDisplay(){
 	//Creamos matrices de modelo, vista y proyeccion
-    glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(0, 0, 0));
+    glm::mat4 model = glm::scale(glm::mat4(1.0f), glm::vec3(scale, scale, scale));
+    model = glm::translate(model, glm::vec3(dx, dy, dz));
+
     glm::mat4 view  = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    glm::mat4 projection = glm::perspective(45.0f, 1.0f*screen_width/screen_height, 0.1f, 10.0f);
+    glm::mat4 projection = glm::perspective(45.0f, 1.0f * screen_width / screen_height, 0.1f, 10.0f);
     glm::mat4 mvp = projection * view * model;
 
     glClearColor(1.0, 1.0, 1.0, 1.0);
@@ -193,7 +212,15 @@ void onDisplay(){
     //Enviamos la matriz que debe ser usada para cada vertice
     glUniformMatrix4fv(uniform_mvp, 1, GL_FALSE, glm::value_ptr(mvp));
 
-    
+    glEnableVertexAttribArray(attribute_coord3d);
+    glEnableVertexAttribArray(attribute_color);
+
+    surface->bindDataTo(attribute_coord3d);
+    surface->bindColorTo(attribute_color);
+    surface->drawArrays();
+
+    glDisableVertexAttribArray(attribute_coord3d);
+    glDisableVertexAttribArray(attribute_color);
 
     glutSwapBuffers();
     
@@ -204,6 +231,41 @@ void onReshape(int w, int h) {
     screen_height = h;
 
     glViewport(0,0,screen_width, screen_height);
+}
+
+void onKeyPress(unsigned char key, int x, int y) {
+    bool redisplay = false;
+    switch(key) {
+        case 27: {
+            glutLeaveMainLoop();
+            break;
+        }
+        case 'D':
+        case 'd': {
+            dx += 0.01;
+            redisplay = true;
+            break;
+        }
+        case 'A':
+        case 'a': {
+            dx -= 0.01;
+            redisplay = true;
+            break;
+        }
+        case 'i': {
+            scale *= 1.02;
+            redisplay = true;
+            break;
+        }
+        case 'j': {
+            scale *= 0.98;
+            redisplay = true;
+            break;
+        }
+    }
+    if (redisplay) {
+        glutPostRedisplay();
+    }
 }
 
 void freeResources(){
@@ -230,6 +292,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (initResources()) {
+        glutKeyboardFunc(onKeyPress);
         glutDisplayFunc(onDisplay);
         glutReshapeFunc(onReshape);
         glEnable(GL_BLEND);

@@ -118,9 +118,10 @@ bool initResources() {
 
     glm::vec2 diff_p3_p2 = p3 - p2;
     float norm_p3_p2 = distance2(p3, p2);
-    std::cout << p4.x << " " << p4.y << std::endl;
+    
     glm::vec2 p4 = p3 + d * diff_p3_p2 / norm_p3_p2;
-
+    std::cout << p4.x << " " << p4.y << std::endl;
+    
     curve_points2[1][0] = p4.x;
     curve_points2[1][1] = p4.y;
 

@@ -1,19 +1,19 @@
-TARGET=curva
+TARGET=superficie
 BASE_DIR=/home/alulab/Code/Graficos
 
 FREEGLUT_LIB_DIR=$(BASE_DIR)/freeglut/lib
 GLEW_LIB_DIR=$(BASE_DIR)/glew/lib
 
+CCSTD=c++11
 LIBS=-L"$(FREEGLUT_LIB_DIR)" -lfreeglut  -L"$(GLEW_LIB_DIR)" -lGLEW -lGLU -lGL
-CFLAGS=-I"$(BASE_DIR)/freeglut/include" -I"$(BASE_DIR)/glew/include" -I"$(BASE_DIR)/glm"
-CSTD=-std=c++11
+CFLAGS=-I"$(BASE_DIR)/freeglut/include" -I"$(BASE_DIR)/glew/include" -I"$(BASE_DIR)/glm" -std=$(CCSTD)
 
 .PHONY: default all clean
 
 default: $(TARGET)
 all: default
 
-OBJECTS = curva.o shader_utils.o
+OBJECTS = superficie.o shader_utils.o
 HEADERS =
 
 %.o:	%.cpp	$(HEADERS)
