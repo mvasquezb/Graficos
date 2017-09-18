@@ -1,8 +1,9 @@
 vertex shader
+fragment shader
+shaders are shared
 cpu gpu bridge
+double buffering
 
 geometry per object
 buffer per object
 objects drawn separately
-
-shaders are shared
