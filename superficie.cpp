@@ -240,6 +240,18 @@ void onKeyPress(unsigned char key, int x, int y) {
             glutLeaveMainLoop();
             break;
         }
+        case 'W':
+        case 'w': {
+            dy += 0.01;
+            redisplay = true;
+            break;
+        }
+        case 'S':
+        case 's': {
+            dy -= 0.01;
+            redisplay = true;
+            break;
+        }
         case 'D':
         case 'd': {
             dx += 0.01;
