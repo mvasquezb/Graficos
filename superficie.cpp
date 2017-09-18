@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <cstdlib>
 #include <cmath>
 #include <vector>
@@ -50,18 +51,70 @@ public:
         glBindBuffer(GL_ARRAY_BUFFER, vbo_color);
         glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * colors.size(), &colors[0], GL_STATIC_DRAW);
     }
-    void drawArrays() {
+    virtual void draw() {
         glBindBuffer(GL_ARRAY_BUFFER, vbo_surface);
         glDrawArrays(GL_LINE_STRIP, 0, points.size() / 3);
     }
 
-
+    /* OpenGL control variables */
     GLuint vbo_surface;
     GLuint vbo_color;
+
+    /* Surface data points */
     std::vector<GLfloat> points;
     std::vector<GLfloat> colors;
-    int numSteps;
-    int numColors;
+};
+
+/**
+ *
+ * Modificaciones. Clase simple para manejar la superficie en Base Rep
+ *
+ */
+class BRepSurface : public Surface {
+public:
+    void configBufferIndexData() {
+        glGenBuffers(1, &ibo_surface);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo_surface);
+        glBufferData(
+            GL_ELEMENT_ARRAY_BUFFER,
+            sizeof(GLushort) * sides.size(),
+            &sides[0],
+            GL_STATIC_DRAW
+        );
+    }
+    void draw() override {
+        // Surface::draw();
+        // return;
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo_surface);
+        glDrawElements(GL_TRIANGLES, sides.size(), GL_UNSIGNED_SHORT, 0);
+    }
+    /**
+     *
+     * Modificaciones. Método que guarda los datos de la superficie
+     * en formato OFF
+     */
+    void writeOFF(const char *outfile) {
+        auto out = std::ofstream(outfile);
+        if (!out) {
+            std::cerr << "No se pudo abrir el archivo de salida OFF" << std::endl;
+            return;
+        }
+        out << "OFF\n";
+        out << points.size() / 3 << " " << sides.size() / 3 << " " << "0\n";
+        for (int i = 0; i < points.size(); i += 3) {
+            out << points[i] << " " << points[i + 1] << " " << points[i + 2] << "\n";
+        }
+        for (int i = 0; i < sides.size(); i += 3) {
+            out << sides[i] << " " << sides[i + 1] << " " << sides[i + 2] << "\n";
+        }
+        out << std::endl;
+    }
+
+    /* OpenGL control variables */
+    GLuint ibo_surface;
+
+    /* Surface data points */
+    std::vector<GLushort> sides;
 };
 
 
@@ -100,7 +153,7 @@ int nSteps = 100;
 // int numPoints;
 int factorial[4] = {1, 1, 2, 6};
 
-Surface *surface;
+BRepSurface *surface;
 
 float dx = 0, dy = 0, dz = 0;
 float scale = 1;
@@ -113,8 +166,72 @@ float bernstein(int n, int i, float t) {
     return binomial(n, i) * powf(t, i) * powf(1 - t, n - i);
 }
 
+/**
+ *
+ * Modificaciones
+ *
+ */
+bool sidesAreEqual(GLushort side1[], GLushort side2[]) {
+    return (
+        side1[0] == side2[0] &&
+        side1[1] == side2[1] &&
+        side1[2] == side2[2]
+    );
+}
+
+bool sideInVector(std::vector<GLushort> sides, GLushort side[]) {
+    for (int i = 0; i < sides.size(); i += 3) {
+        if (sidesAreEqual(&sides[i], side)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Encuentra caras (triángulos) que conforman la superficie buscando, 
+ * por cada punto, los dos puntos más cercanos, con los cuales se formará
+ * una cara y se guardan en el buffer del objeto surface
+ */
+void getSurfaceSides(BRepSurface *surface) {
+    for (int index = 0; index < surface->points.size(); index += 3) {
+        float closestDistance = 1e09;
+        float secondClosestDistance = 1e09;
+        int closestPoint, secondClosestPoint;
+        auto vertex = glm::vec3(
+            surface->points[index],
+            surface->points[index + 1],
+            surface->points[index + 2]
+        );
+        for (int aux_ind = 0; aux_ind < surface->points.size() / 3; ++aux_ind) {
+            if (aux_ind == index) {
+                continue;
+            }
+            auto vertex2 = glm::vec3(
+                surface->points[aux_ind],
+                surface->points[aux_ind + 1],
+                surface->points[aux_ind + 2]
+            );
+            float distance = glm::distance(vertex, vertex2);
+            if (distance < closestDistance) {
+                closestDistance = distance;
+                closestPoint = aux_ind;
+            } else if (distance < secondClosestDistance) {
+                secondClosestDistance = distance;
+                secondClosestPoint = aux_ind;
+            }
+        }
+        GLushort side[] = { index, closestPoint, secondClosestPoint };
+        if (!sideInVector(surface->sides, side)) {
+            surface->sides.push_back(side[0]);
+            surface->sides.push_back(side[1]);
+            surface->sides.push_back(side[2]);
+        }
+    }
+}
+
 bool initResources(){
-    surface = new Surface();
+    surface = new BRepSurface();
 
     float u = 0;
 
@@ -138,10 +255,13 @@ bool initResources(){
             surface->points.push_back(y);
             surface->points.push_back(z);
 
-            v += 1.0/nSteps;
+            v += 1.0 / nSteps;
         }
-        u += 1.0/nSteps;
+        u += 1.0 / nSteps;
     }
+
+    /* Modificación */
+    getSurfaceSides(surface);
 
     for (int i = 0; i < surface->points.size() / 3; ++i) {
         surface->colors.push_back(0.0);
@@ -150,6 +270,8 @@ bool initResources(){
     }
 
     surface->configBufferData();
+    /* Modificación */
+    surface->configBufferIndexData();
     surface->configBufferColor();
 
 	GLint link_ok = GL_FALSE;
@@ -217,7 +339,7 @@ void onDisplay(){
 
     surface->bindDataTo(attribute_coord3d);
     surface->bindColorTo(attribute_color);
-    surface->drawArrays();
+    surface->draw();
 
     glDisableVertexAttribArray(attribute_coord3d);
     glDisableVertexAttribArray(attribute_color);
@@ -303,7 +425,12 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
 
+    /* Modificación */
+    const char *outfile = "surface.off";
     if (initResources()) {
+        /* Modificación */
+        surface->writeOFF(outfile);
+
         glutKeyboardFunc(onKeyPress);
         glutDisplayFunc(onDisplay);
         glutReshapeFunc(onReshape);
