@@ -18,15 +18,18 @@ GLint uniform_mvp;
 GLint uniform_model;
 
 //Variables para el movimiento
-GLfloat alfa=0.0, beta=0.0, theta=0.0, phi=0.0;
+GLfloat alfa = 0.0,
+        beta = 0.0,
+        theta = 0.0,
+        phi = 0.0;
 
-GLfloat t = 1.0f*glutGet(GLUT_ELAPSED_TIME);
+GLfloat t = 1.0f * glutGet(GLUT_ELAPSED_TIME);
 
-int screen_width = 800, screen_height = 800;
+int screen_width = 800,
+    screen_height = 800;
 
 struct Vertex{
     float x, y, z;
-
 };
 
 struct Triangle{
@@ -217,7 +220,7 @@ bool initResources() {
 
 void drawMesh(Mesh* mesh) {
     //Creamos matrices de modelo, vista y proyeccion
-    glm::mat4 model =   mesh->model_transform;
+    glm::mat4 model = mesh->model_transform;
 
     glm::mat4 view  = glm::lookAt(glm::vec3(10.0f, 10.0f, 10.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     glm::mat4 projection = glm::perspective(45.0f, 1.0f*screen_width/screen_height, 0.1f, 100.0f);
@@ -268,6 +271,15 @@ void onReshape(int w, int h) {
     glViewport(0,0,screen_width, screen_height);
 }
 
+void onKeyPress(unsigned char key, int x, int y) {
+    switch(key) {
+        case 27: {
+            glutLeaveMainLoop();
+            break;
+        }
+    }
+}
+
 void freeResources() {
     glDeleteProgram(program);
 
@@ -302,6 +314,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (initResources()) {
+        glutKeyboardFunc(onKeyPress);
         glutDisplayFunc(onDisplay);
         glutReshapeFunc(onReshape);
         glEnable(GL_BLEND);
