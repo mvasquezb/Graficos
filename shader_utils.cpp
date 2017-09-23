@@ -95,7 +95,7 @@ GLuint create_shader(const char* filename, GLenum type)
 #endif
     ,
     source };*/
-    const GLchar* sources[] = {source};
+  const GLchar* sources[] = {source};
   //glShaderSource(res, 3, sources, NULL);
   glShaderSource(res, 1, sources, NULL);
   free((void*)source);
