@@ -182,9 +182,12 @@ bool initResources() {
     initBuffers(scene.meshes[2]);
 
     GLint link_ok = GL_FALSE;
-    GLuint vs, fs;
-    if ((vs = create_shader("basic3.v.glsl", GL_VERTEX_SHADER))==0) return false;
-    if ((fs = create_shader("basic3.f.glsl", GL_FRAGMENT_SHADER))==0) return false;
+    GLuint vs = create_shader("basic3.v.glsl", GL_VERTEX_SHADER);
+    GLuint fs = create_shader("basic3.f.glsl", GL_FRAGMENT_SHADER);
+
+    if (!vs || !fs) {
+        return false;
+    }
 
     program = glCreateProgram();
     glAttachShader(program, vs);
@@ -258,8 +261,9 @@ void onDisplay() {
     glClearColor(1.0, 1.0, 1.0, 1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    for(int i = 0; i < scene.numMeshes; i++)
+    for(int i = 0; i < scene.numMeshes; i++) {
         drawMesh(scene.meshes[i]);
+    }
 
     glutSwapBuffers();
 }
@@ -268,7 +272,7 @@ void onReshape(int w, int h) {
     screen_width = w;
     screen_height = h;
 
-    glViewport(0,0,screen_width, screen_height);
+    glViewport(0, 0, screen_width, screen_height);
 }
 
 void onKeyPress(unsigned char key, int x, int y) {
@@ -278,6 +282,37 @@ void onKeyPress(unsigned char key, int x, int y) {
             break;
         }
     }
+}
+
+void animate() {
+    GLfloat t1 = 10.f * glutGet(GLUT_ELAPSED_TIME);
+    GLfloat delta = t1 - t;
+    // t = t1;
+
+    delta = delta / 75.0f * glm::radians(1.0f);
+    alfa = delta;
+    beta = delta;
+    theta = delta;
+    phi = delta;
+
+    scene.meshes[0]->model_transform = glm::rotate(glm::mat4(1.0f), phi / 20, glm::vec3(0, 1, 0));
+
+    scene.meshes[1]->model_transform =
+        glm::rotate(glm::mat4(1.0f), alfa, glm::vec3(0, 1, 0)) *
+        glm::translate(glm::mat4(1.0f), glm::vec3(5.0f, 0.0f, 0.0f)) *
+        glm::rotate(glm::mat4(1.0f), beta, glm::vec3(0.0f, 1.0f, 0.0f)) *
+        glm::scale(glm::mat4(1.0f), glm::vec3(0.4f, 0.4f, 0.4f));
+
+    scene.meshes[2]->model_transform = 
+        glm::rotate(glm::mat4(1.0f), alfa, glm::vec3(0.0f, 1.0f, 0.0f)) *
+        glm::translate(glm::mat4(1.0f), glm::vec3(5.0f, 0.0f, 0.0f)) *
+        glm::rotate(glm::mat4(1.0f), theta, glm::vec3(0.0f, 1.0f, 0.0f)) *
+        glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 0.0f, 0.0f)) *
+        glm::rotate(glm::mat4(1.0f), phi, glm::vec3(0.0f, 1.0f, 0.0f)) *
+        glm::scale(glm::mat4(1.0f), glm::vec3(0.1f, 0.1f, 0.1f));
+
+
+    glutPostRedisplay();
 }
 
 void freeResources() {
@@ -317,6 +352,7 @@ int main(int argc, char* argv[]) {
         glutKeyboardFunc(onKeyPress);
         glutDisplayFunc(onDisplay);
         glutReshapeFunc(onReshape);
+        glutIdleFunc(animate);
         glEnable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
