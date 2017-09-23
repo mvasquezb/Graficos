@@ -170,18 +170,20 @@ void initBuffers(Mesh* mesh) {
 
 
 bool initResources() {
-
     scene.meshes[0] = readOFF("sphere.off"); //Sol
     scene.meshes[1] = readOFF("sphere.off"); //Tierra
     scene.meshes[2] = readOFF("sphere.off"); //Luna
     scene.meshes[3] = readOFF("saturn.off"); // Saturn
+    scene.meshes[4] = readOFF("sphere.off"); //Luna
+    // scene.meshes[5] = readOFF("sphere.off"); //Luna
 
-    scene.numMeshes = 4;
+    scene.numMeshes = 5;
 
     initBuffers(scene.meshes[0]);
     initBuffers(scene.meshes[1]);
     initBuffers(scene.meshes[2]);
     initBuffers(scene.meshes[3]);
+    initBuffers(scene.meshes[4]);
 
     GLint link_ok = GL_FALSE;
     GLuint vs = create_shader("basic3.v.glsl", GL_VERTEX_SHADER);
@@ -314,10 +316,16 @@ void animate() {
         glm::scale(glm::mat4(1.0f), glm::vec3(0.1f, 0.1f, 0.1f));
 
     scene.meshes[3]->model_transform = 
-        glm::rotate(glm::mat4(1.0f), alfa / 11.0f, glm::vec3(0, 1, 0)) *
-        glm::translate(glm::mat4(1.0f), glm::vec3(8, 0, 0)) *
+        glm::rotate(glm::mat4(1.0f), glm::radians(20.0f), glm::vec3(1, 0, 1)) *
+        glm::rotate(glm::mat4(1.0f), alfa / 5.0f, glm::vec3(0, 1, 0)) *
+        glm::translate(glm::mat4(1.0f), glm::vec3(8, 0, 2)) *
         glm::scale(glm::mat4(1.0f), glm::vec3(0.4, 0.4, 0.4)) *
+        glm::rotate(glm::mat4(1.0f), beta / 2.0f, glm::vec3(0, 1, 0)) *
         glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(1, 0, 0));
+
+    scene.meshes[4]->model_transform = 
+        glm::translate(glm::mat4(1.0f), glm::vec3(6.0f - 1.0f * delta / 1000.f, 0, 0)) *
+        glm::scale(glm::mat4(1.0f), glm::vec3(0.1f, 0.1f, 0.1f));
 
     glutPostRedisplay();
 }
