@@ -1,4 +1,3 @@
-
 #include <iostream>
 #include <cstdlib>
 #include <cstdio>
@@ -18,10 +17,11 @@ GLint attribute_coord;
 GLint uniform_mvp;
 GLint uniform_model;
 
-//Variables para el movimiento
-GLfloat alfa=0.0, beta=0.0, theta=0.0, phi=0.0;
+//Variables para el movimient
+GLfloat alfa=0.0, beta=0.0, theta=0.0, phi=0.0, sat=0.0, lambda =0.0;
+GLfloat mov = 0.0;
 
-GLfloat t = 1.0f*glutGet(GLUT_ELAPSED_TIME);
+GLfloat t;
 
 int screen_width = 800, screen_height = 800;
 
@@ -172,12 +172,20 @@ bool init_resources(){
     scene.meshes[0] = leerOFF("sphere.off"); //Sol
     scene.meshes[1] = leerOFF("sphere.off"); //Tierra
     scene.meshes[2] = leerOFF("sphere.off"); //Luna
+    scene.meshes[3] = leerOFF("saturno.off"); //Saturno
 
-    scene.numMeshes = 3;
+    scene.meshes[4] = leerOFF("sphere.off"); //Meteorito1
+    scene.meshes[5] = leerOFF("sphere.off"); //Meteorito2
+
+    scene.numMeshes = 6;
 
     init_buffers(scene.meshes[0]);
     init_buffers(scene.meshes[1]);
     init_buffers(scene.meshes[2]);
+    init_buffers(scene.meshes[3]);
+
+    init_buffers(scene.meshes[4]);
+    init_buffers(scene.meshes[5]);
 
     GLint link_ok = GL_FALSE;
     GLuint vs, fs;
@@ -269,6 +277,56 @@ void onReshape(int w, int h){
     glViewport(0,0,screen_width, screen_height);
 }
 
+void onIdle(){
+    GLfloat t1 = 1.0f * glutGet(GLUT_ELAPSED_TIME);
+    GLfloat delta = (t1-t);
+
+    t = t1;
+
+    float animation_factor = 50.0f;
+
+    theta += (delta/animation_factor) * glm::radians(1.0f);
+    beta += (delta/animation_factor) * glm::radians(1.0f);
+    alfa += (delta/animation_factor) * glm::radians(1.0f);
+    phi += (delta/animation_factor) * glm::radians(1.0f);
+    lambda  += (delta/animation_factor) * glm::radians(1.0f) * 0.5f;
+
+    sat = (M_PI)/2.0f ;
+
+    scene.meshes[1]-> model_transform = 
+        glm::rotate(glm::mat4(1.0f), alfa, glm::vec3(0.0f, 1.0f, 0.0f)) * 
+        glm::translate(glm::mat4(1.0f), glm::vec3(5.0f, 0.0f, 0.0f)) *
+        glm::rotate(glm::mat4(1.0f), beta, glm::vec3(0.0f, 1.0f, 0.0f)) *
+        glm::scale(glm::mat4(1.0f), glm::vec3(0.4f, 0.4f, 0.4f));
+
+    scene.meshes[2]-> model_transform = 
+        glm::rotate(glm::mat4(1.0f), alfa, glm::vec3(0.0f, 1.0f, 0.0f)) *
+        glm::translate(glm::mat4(1.0f), glm::vec3(5.0f, 0.0f, 0.0f)) *
+        glm::rotate(glm::mat4(1.0f), theta, glm::vec3(0.0f, 1.0f, 0.0f)) *
+        glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 0.0f, 0.0f)) * 
+        glm::rotate(glm::mat4(1.0f), phi, glm::vec3(0.0f, 1.0f, 0.0f)) *
+        glm::scale(glm::mat4(1.0f), glm::vec3(0.1f, 0.1f, 0.1f));
+
+    scene.meshes[3]-> model_transform =
+        glm::rotate(glm::mat4(1.0f), lambda, glm::vec3(0.0f, 1.0f, 0.0f)) *
+        glm::translate(glm::mat4(1.0f), glm::vec3(8.0f, 0.0f, 0.0f)) *
+        glm::rotate(glm::mat4(1.0f), phi, glm::vec3(0.0f, 1.0f, 0.0f)) *
+        glm::rotate(glm::mat4(1.0f), sat, glm::vec3(1.0f, 0.0f, 0.0f)) *
+        glm::scale(glm::mat4(1.0f), glm::vec3(0.3f, 0.3f, 0.3f));
+
+    mov +=delta/animation_factor * 0.5;
+    if (mov > 15) mov = -15;
+    scene.meshes[4]->model_transform = 
+        glm::translate(glm::mat4(1.0f), glm::vec3(1.0f * mov, 0.0f, 0.0f)) *
+        glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 5.0f)) *
+        glm::scale(glm::mat4(1.0f), glm::vec3(0.1f, 0.1f, 0.1f));
+
+        
+
+
+    glutPostRedisplay();
+}
+
 void free_resources(){
     glDeleteProgram(program);
 
@@ -283,13 +341,16 @@ void free_resources(){
     }
 }
 
-
 int main(int argc, char* argv[]){
+
+
     glutInit(&argc, argv);
     glutInitContextVersion(2,0);
     glutInitDisplayMode(GLUT_RGBA | GLUT_ALPHA | GLUT_DEPTH | GLUT_DOUBLE);
     glutInitWindowSize(screen_width, screen_height);
     glutCreateWindow("OpenGL");
+
+    t = 1.0f*glutGet(GLUT_ELAPSED_TIME);
 
     GLenum glew_status = glewInit();
     if(glew_status != GLEW_OK){
@@ -308,6 +369,7 @@ int main(int argc, char* argv[]){
         glEnable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glutIdleFunc(onIdle);
         glutMainLoop();
     }
 
