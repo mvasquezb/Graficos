@@ -1,6 +1,7 @@
 
 #include <iostream>
 #include <cstdlib>
+#include <cstdio>
 #include <vector>
 
 #include <GL/glew.h>

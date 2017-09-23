@@ -1,4 +1,4 @@
-TARGET=triangle
+TARGET=transformaciones
 BASE_DIR=$(shell pwd)
 
 FREEGLUT_LIB_DIR=$(BASE_DIR)/freeglut/lib
@@ -13,7 +13,7 @@ CSTD=-std=c++11
 default: $(TARGET)
 all: default
 
-OBJECTS = opengl.o shader_utils.o
+OBJECTS = transformaciones.o shader_utils.o
 HEADERS =
 
 %.o:	%.cpp	$(HEADERS)
