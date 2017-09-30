@@ -9,6 +9,7 @@
 #define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/rotate_vector.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include "shader_utils.h"
 
@@ -21,7 +22,10 @@ GLint uniform_model;
 GLfloat alfa = 0.0,
         beta = 0.0,
         theta = 0.0,
-        phi = 0.0;
+        phi = 0.0,
+        omega = 0.0;
+
+glm::vec3 camera_position;
 
 GLfloat t = 1.0f * glutGet(GLUT_ELAPSED_TIME);
 
@@ -228,9 +232,10 @@ bool initResources() {
 void drawMesh(Mesh* mesh) {
     //Creamos matrices de modelo, vista y proyeccion
     glm::mat4 model = mesh->model_transform;
-
-    glm::mat4 view  = glm::lookAt(glm::vec3(10.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    
+    glm::mat4 view  = glm::lookAt(camera_position, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.f, 1.f, 0.f));
     glm::mat4 projection = glm::perspective(45.0f, 1.0f*screen_width/screen_height, 0.1f, 100.0f);
+    // glm::mat4 projection = glm::ortho(-15.f, 15.f, -15.f, 15.f, 0.f, 15.f);
     glm::mat4 mvp = projection * view ;
 
     glUseProgram(program);
@@ -298,30 +303,32 @@ void animate() {
     beta = delta;
     theta = delta;
     phi = delta;
+    omega += 0.1;
+    
+    camera_position = glm::rotate(glm::vec3(10.f), omega, glm::vec3(0, 1, 0));
 
     scene.meshes[0]->model_transform = glm::rotate(glm::mat4(1.0f), phi / 20, glm::vec3(0, 1, 0));
 
     scene.meshes[1]->model_transform =
-        glm::rotate(glm::mat4(1.0f), alfa, glm::vec3(0, 1, 0)) *
+        // glm::rotate(glm::mat4(1.0f), alfa, glm::vec3(0, 1, 0)) *
         glm::translate(glm::mat4(1.0f), glm::vec3(5.0f, 0.0f, 0.0f)) *
-        glm::rotate(glm::mat4(1.0f), beta, glm::vec3(0.0f, 1.0f, 0.0f)) *
+        // glm::rotate(glm::mat4(1.0f), beta, glm::vec3(0.0f, 1.0f, 0.0f)) *
         glm::scale(glm::mat4(1.0f), glm::vec3(0.4f, 0.4f, 0.4f));
 
     scene.meshes[2]->model_transform = 
-        glm::rotate(glm::mat4(1.0f), alfa, glm::vec3(0.0f, 1.0f, 0.0f)) *
+        // glm::rotate(glm::mat4(1.0f), alfa, glm::vec3(0.0f, 1.0f, 0.0f)) *
         glm::translate(glm::mat4(1.0f), glm::vec3(5.0f, 0.0f, 0.0f)) *
-        glm::rotate(glm::mat4(1.0f), theta, glm::vec3(0.0f, 1.0f, 0.0f)) *
+        // glm::rotate(glm::mat4(1.0f), theta, glm::vec3(0.0f, 1.0f, 0.0f)) *
         glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 0.0f, 0.0f)) *
-        glm::rotate(glm::mat4(1.0f), phi, glm::vec3(0.0f, 1.0f, 0.0f)) *
+        // glm::rotate(glm::mat4(1.0f), phi, glm::vec3(0.0f, 1.0f, 0.0f)) *
         glm::scale(glm::mat4(1.0f), glm::vec3(0.1f, 0.1f, 0.1f));
 
     scene.meshes[3]->model_transform = 
-        
-        glm::rotate(glm::mat4(1.0f), alfa / 5.0f, glm::vec3(0, 1, 0)) *
+        // glm::rotate(glm::mat4(1.0f), alfa / 5.0f, glm::vec3(0, 1, 0)) *
         glm::translate(glm::mat4(1.0f), glm::vec3(8, 0, 2)) *
         glm::scale(glm::mat4(1.0f), glm::vec3(0.4, 0.4, 0.4)) *
         glm::rotate(glm::mat4(1.0f), glm::radians(40.0f), glm::vec3(1, 0, 1)) *
-        glm::rotate(glm::mat4(1.0f), beta / 2.0f, glm::vec3(0, 1, 0)) *
+        // glm::rotate(glm::mat4(1.0f), beta / 2.0f, glm::vec3(0, 1, 0)) *
         glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(1, 0, 0));
 
     // scene.meshes[4]->model_transform = 
