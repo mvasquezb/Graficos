@@ -28,15 +28,25 @@ GLfloat t = 1.0f * glutGet(GLUT_ELAPSED_TIME);
 int screen_width = 800,
     screen_height = 800;
 
-struct Vertex{
+struct Vertex {
     float x, y, z;
 };
 
-struct Triangle{
+struct Triangle {
     unsigned int indices[3];
 };
 
-struct Mesh{
+struct Mesh {
+
+    ~Mesh() {
+        glDeleteBuffers(1, &vbo_object);
+        glDeleteBuffers(1, &ibo_object);
+        delete[] object_vertices;
+        delete[] object_indexes;
+        delete[] vertices;
+        delete[] triangles;
+    }
+
     //Informacion de estructura
     int numVertices;
     int numTriangles;
@@ -59,9 +69,20 @@ struct Mesh{
     GLuint ibo_object;
 };
 
-struct Scene{
+struct Scene {
+    ~Scene() {
+        for (auto& plane : planes) {
+            delete plane;
+        }
+
+        for (auto& propeller : propellers) {
+            delete propeller;
+        }
+    }
+
     int numMeshes;
-    Mesh* meshes[5];
+    std::vector<Mesh*> planes;
+    std::vector<Mesh*> propellers;
 };
 
 
@@ -170,20 +191,25 @@ void initBuffers(Mesh* mesh) {
 
 
 bool initResources() {
-    scene.meshes[0] = readOFF("sphere.off"); //Sol
-    scene.meshes[1] = readOFF("sphere.off"); //Tierra
-    scene.meshes[2] = readOFF("sphere.off"); //Luna
-    scene.meshes[3] = readOFF("saturn.off"); // Saturn
-    scene.meshes[4] = readOFF("sphere.off"); //Luna
-    // scene.meshes[5] = readOFF("sphere.off"); //Luna
+    scene.planes.push_back(readOFF("avion.off"));
+    scene.planes.push_back(readOFF("avion.off"));
+    scene.planes.push_back(readOFF("avion.off"));
+    scene.planes.push_back(readOFF("avion.off"));
+    scene.planes.push_back(readOFF("avion.off"));
+    
+    scene.propellers.push_back(readOFF("helice.off"));
+    scene.propellers.push_back(readOFF("helice.off"));
+    scene.propellers.push_back(readOFF("helice.off"));
+    scene.propellers.push_back(readOFF("helice.off"));
+    scene.propellers.push_back(readOFF("helice.off"));
 
-    scene.numMeshes = 5;
+    for (auto& plane : scene.planes) {
+        initBuffers(plane);
+    }
 
-    initBuffers(scene.meshes[0]);
-    initBuffers(scene.meshes[1]);
-    initBuffers(scene.meshes[2]);
-    initBuffers(scene.meshes[3]);
-    initBuffers(scene.meshes[4]);
+    for (auto& propeller : scene.propellers) {
+        initBuffers(propeller);
+    }
 
     GLint link_ok = GL_FALSE;
     GLuint vs = create_shader("basic3.v.glsl", GL_VERTEX_SHADER);
@@ -230,7 +256,7 @@ void drawMesh(Mesh* mesh) {
     glm::mat4 model = mesh->model_transform;
 
     glm::mat4 view  = glm::lookAt(glm::vec3(10.0f, 10.0f, 10.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    glm::mat4 projection = glm::perspective(45.0f, 1.0f*screen_width/screen_height, 0.1f, 100.0f);
+    glm::mat4 projection = glm::perspective(45.0f, 1.0f * screen_width / screen_height, 0.1f, 100.0f);
     glm::mat4 mvp = projection * view ;
 
     glUseProgram(program);
@@ -252,7 +278,8 @@ void drawMesh(Mesh* mesh) {
 
     //Dibujar las primitivas
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->ibo_object);
-    int size;   glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
+    int size;
+    glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
 
     //Dibujar los triánglos
     glDrawElements(GL_TRIANGLES, size/sizeof(GLushort), GL_UNSIGNED_SHORT, 0);
@@ -261,12 +288,15 @@ void drawMesh(Mesh* mesh) {
 }
 
 void onDisplay() {
-
     glClearColor(1.0, 1.0, 1.0, 1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    for(int i = 0; i < scene.numMeshes; i++) {
-        drawMesh(scene.meshes[i]);
+    for (auto& plane : scene.planes) {
+        drawMesh(plane);
+    }
+
+    for (auto& propeller : scene.propellers) {
+        drawMesh(propeller);
     }
 
     glutSwapBuffers();
@@ -299,49 +329,46 @@ void animate() {
     theta = delta;
     phi = delta;
 
-    scene.meshes[0]->model_transform = glm::rotate(glm::mat4(1.0f), phi / 20, glm::vec3(0, 1, 0));
 
-    scene.meshes[1]->model_transform =
-        glm::rotate(glm::mat4(1.0f), alfa, glm::vec3(0, 1, 0)) *
-        glm::translate(glm::mat4(1.0f), glm::vec3(5.0f, 0.0f, 0.0f)) *
-        glm::rotate(glm::mat4(1.0f), beta, glm::vec3(0.0f, 1.0f, 0.0f)) *
-        glm::scale(glm::mat4(1.0f), glm::vec3(0.4f, 0.4f, 0.4f));
+    scene.planes[0]->model_transform = glm::translate(
+        scene.planes[0]->model_transform,
+        glm::vec3(0.f, 0.f, 0.01f)
+    );
 
-    scene.meshes[2]->model_transform = 
-        glm::rotate(glm::mat4(1.0f), alfa, glm::vec3(0.0f, 1.0f, 0.0f)) *
-        glm::translate(glm::mat4(1.0f), glm::vec3(5.0f, 0.0f, 0.0f)) *
-        glm::rotate(glm::mat4(1.0f), theta, glm::vec3(0.0f, 1.0f, 0.0f)) *
-        glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 0.0f, 0.0f)) *
-        glm::rotate(glm::mat4(1.0f), phi, glm::vec3(0.0f, 1.0f, 0.0f)) *
-        glm::scale(glm::mat4(1.0f), glm::vec3(0.1f, 0.1f, 0.1f));
 
-    scene.meshes[3]->model_transform = 
-        glm::rotate(glm::mat4(1.0f), glm::radians(20.0f), glm::vec3(1, 0, 1)) *
-        glm::rotate(glm::mat4(1.0f), alfa / 5.0f, glm::vec3(0, 1, 0)) *
-        glm::translate(glm::mat4(1.0f), glm::vec3(8, 0, 2)) *
-        glm::scale(glm::mat4(1.0f), glm::vec3(0.4, 0.4, 0.4)) *
-        glm::rotate(glm::mat4(1.0f), beta / 2.0f, glm::vec3(0, 1, 0)) *
-        glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(1, 0, 0));
+    // scene.meshes[0]->model_transform = glm::rotate(glm::mat4(1.0f), phi / 20, glm::vec3(0, 1, 0));
 
-    scene.meshes[4]->model_transform = 
-        glm::translate(glm::mat4(1.0f), glm::vec3(6.0f - 1.0f * delta / 1000.f, 0, 0)) *
-        glm::scale(glm::mat4(1.0f), glm::vec3(0.1f, 0.1f, 0.1f));
+    // scene.meshes[1]->model_transform =
+    //     glm::rotate(glm::mat4(1.0f), alfa, glm::vec3(0, 1, 0)) *
+    //     glm::translate(glm::mat4(1.0f), glm::vec3(5.0f, 0.0f, 0.0f)) *
+    //     glm::rotate(glm::mat4(1.0f), beta, glm::vec3(0.0f, 1.0f, 0.0f)) *
+    //     glm::scale(glm::mat4(1.0f), glm::vec3(0.4f, 0.4f, 0.4f));
+
+    // scene.meshes[2]->model_transform = 
+    //     glm::rotate(glm::mat4(1.0f), alfa, glm::vec3(0.0f, 1.0f, 0.0f)) *
+    //     glm::translate(glm::mat4(1.0f), glm::vec3(5.0f, 0.0f, 0.0f)) *
+    //     glm::rotate(glm::mat4(1.0f), theta, glm::vec3(0.0f, 1.0f, 0.0f)) *
+    //     glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 0.0f, 0.0f)) *
+    //     glm::rotate(glm::mat4(1.0f), phi, glm::vec3(0.0f, 1.0f, 0.0f)) *
+    //     glm::scale(glm::mat4(1.0f), glm::vec3(0.1f, 0.1f, 0.1f));
+
+    // scene.meshes[3]->model_transform = 
+    //     glm::rotate(glm::mat4(1.0f), glm::radians(20.0f), glm::vec3(1, 0, 1)) *
+    //     glm::rotate(glm::mat4(1.0f), alfa / 5.0f, glm::vec3(0, 1, 0)) *
+    //     glm::translate(glm::mat4(1.0f), glm::vec3(8, 0, 2)) *
+    //     glm::scale(glm::mat4(1.0f), glm::vec3(0.4, 0.4, 0.4)) *
+    //     glm::rotate(glm::mat4(1.0f), beta / 2.0f, glm::vec3(0, 1, 0)) *
+    //     glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(1, 0, 0));
+
+    // scene.meshes[4]->model_transform = 
+    //     glm::translate(glm::mat4(1.0f), glm::vec3(6.0f - 1.0f * delta / 1000.f, 0, 0)) *
+    //     glm::scale(glm::mat4(1.0f), glm::vec3(0.1f, 0.1f, 0.1f));
 
     glutPostRedisplay();
 }
 
 void freeResources() {
     glDeleteProgram(program);
-
-    for(int i = 0; i < scene.numMeshes; i++) {
-        glDeleteBuffers(1, &scene.meshes[i]->vbo_object);
-        glDeleteBuffers(1, &scene.meshes[i]->ibo_object);
-        delete[] scene.meshes[i]->object_vertices;
-        delete[] scene.meshes[i]->object_indexes;
-        delete[] scene.meshes[i]->vertices;
-        delete[] scene.meshes[i]->triangles;
-        delete scene.meshes[i];
-    }
 }
 
 
