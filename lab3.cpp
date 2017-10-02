@@ -2,6 +2,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <vector>
+#include <array>
 
 #include <GL/glew.h>
 #include <GL/freeglut.h>
@@ -81,8 +82,8 @@ struct Scene {
     }
 
     int numMeshes;
-    std::vector<Mesh*> planes;
-    std::vector<Mesh*> propellers;
+    std::array<Mesh*, 5> planes;
+    std::array<Mesh*, 5> propellers;
 };
 
 
@@ -189,26 +190,53 @@ void initBuffers(Mesh* mesh) {
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, mesh->numTriangles * 3 * sizeof(GLushort), mesh->object_indexes, GL_STATIC_DRAW);
 }
 
-
+/**
+ * Change initial plane positions
+ */
 bool initResources() {
-    scene.planes.push_back(readOFF("avion.off"));
-    scene.planes.push_back(readOFF("avion.off"));
-    scene.planes.push_back(readOFF("avion.off"));
-    scene.planes.push_back(readOFF("avion.off"));
-    scene.planes.push_back(readOFF("avion.off"));
+    scene.planes[0] = readOFF("avion.off");
+    scene.planes[1] = readOFF("avion.off");
+    scene.planes[2] = readOFF("avion.off");
+    scene.planes[3] = readOFF("avion.off");
+    scene.planes[4] = readOFF("avion.off");
     
-    scene.propellers.push_back(readOFF("helice.off"));
-    scene.propellers.push_back(readOFF("helice.off"));
-    scene.propellers.push_back(readOFF("helice.off"));
-    scene.propellers.push_back(readOFF("helice.off"));
-    scene.propellers.push_back(readOFF("helice.off"));
+    scene.propellers[0] = readOFF("helice.off");
+    scene.propellers[1] = readOFF("helice.off");
+    scene.propellers[2] = readOFF("helice.off");
+    scene.propellers[3] = readOFF("helice.off");
+    scene.propellers[4] = readOFF("helice.off");
 
     for (auto& plane : scene.planes) {
         initBuffers(plane);
+        plane->model_transform = glm::translate(glm::mat4(1.0f), glm::vec3(-5.f, -6.f, -5.f));
     }
+
+    // Setup initial plane positions
+    // Mid-right plane
+    scene.planes[1]->model_transform = glm::translate(
+        scene.planes[1]->model_transform,
+        glm::vec3(10.f, 1.f, 10.f)
+    );
+    // Center plane
+    scene.planes[2]->model_transform = glm::translate(
+        scene.planes[2]->model_transform,
+        glm::vec3(-10.f, 1.f, -10.f)
+    );
+    // Mid-left plane
+    scene.planes[3]->model_transform = glm::translate(
+        scene.planes[3]->model_transform,
+        glm::vec3(-18.f, 1.f, 0.f)
+    );
+    // Bottom-left plane.
+    scene.planes[4]->model_transform = glm::translate(
+        scene.planes[4]->model_transform,
+        glm::vec3(-20.f, 1.f, 12.f)
+    );
+
 
     for (auto& propeller : scene.propellers) {
         initBuffers(propeller);
+        propeller->model_transform = glm::translate(glm::mat4(1.0f), glm::vec3(-15.f, -6.f, -15.f));
     }
 
     GLint link_ok = GL_FALSE;
@@ -323,46 +351,20 @@ void animate() {
     GLfloat delta = t1 - t;
     // t = t1;
 
-    delta = delta / 75.0f * glm::radians(1.0f);
+    delta = delta / 5.0f * glm::radians(1.0f);
     alfa = delta;
-    beta = delta;
-    theta = delta;
-    phi = delta;
 
+    glm::mat4 plane_transform = glm::translate(glm::mat4(1.f), glm::vec3(0.f, 0.f, -0.1f));
 
-    scene.planes[0]->model_transform = glm::translate(
-        scene.planes[0]->model_transform,
-        glm::vec3(0.f, 0.f, 0.01f)
-    );
+    for (int i = 0; i < scene.planes.size(); ++i) {
+        auto& plane = scene.planes[i];
+        auto& propeller = scene.propellers[i];
 
-
-    // scene.meshes[0]->model_transform = glm::rotate(glm::mat4(1.0f), phi / 20, glm::vec3(0, 1, 0));
-
-    // scene.meshes[1]->model_transform =
-    //     glm::rotate(glm::mat4(1.0f), alfa, glm::vec3(0, 1, 0)) *
-    //     glm::translate(glm::mat4(1.0f), glm::vec3(5.0f, 0.0f, 0.0f)) *
-    //     glm::rotate(glm::mat4(1.0f), beta, glm::vec3(0.0f, 1.0f, 0.0f)) *
-    //     glm::scale(glm::mat4(1.0f), glm::vec3(0.4f, 0.4f, 0.4f));
-
-    // scene.meshes[2]->model_transform = 
-    //     glm::rotate(glm::mat4(1.0f), alfa, glm::vec3(0.0f, 1.0f, 0.0f)) *
-    //     glm::translate(glm::mat4(1.0f), glm::vec3(5.0f, 0.0f, 0.0f)) *
-    //     glm::rotate(glm::mat4(1.0f), theta, glm::vec3(0.0f, 1.0f, 0.0f)) *
-    //     glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 0.0f, 0.0f)) *
-    //     glm::rotate(glm::mat4(1.0f), phi, glm::vec3(0.0f, 1.0f, 0.0f)) *
-    //     glm::scale(glm::mat4(1.0f), glm::vec3(0.1f, 0.1f, 0.1f));
-
-    // scene.meshes[3]->model_transform = 
-    //     glm::rotate(glm::mat4(1.0f), glm::radians(20.0f), glm::vec3(1, 0, 1)) *
-    //     glm::rotate(glm::mat4(1.0f), alfa / 5.0f, glm::vec3(0, 1, 0)) *
-    //     glm::translate(glm::mat4(1.0f), glm::vec3(8, 0, 2)) *
-    //     glm::scale(glm::mat4(1.0f), glm::vec3(0.4, 0.4, 0.4)) *
-    //     glm::rotate(glm::mat4(1.0f), beta / 2.0f, glm::vec3(0, 1, 0)) *
-    //     glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(1, 0, 0));
-
-    // scene.meshes[4]->model_transform = 
-    //     glm::translate(glm::mat4(1.0f), glm::vec3(6.0f - 1.0f * delta / 1000.f, 0, 0)) *
-    //     glm::scale(glm::mat4(1.0f), glm::vec3(0.1f, 0.1f, 0.1f));
+        plane->model_transform = plane_transform * plane->model_transform;
+        propeller->model_transform = 
+            plane->model_transform *
+            glm::rotate(glm::mat4(1.f), alfa, glm::vec3(0.f, 0.f, 1.f));
+    }
 
     glutPostRedisplay();
 }
