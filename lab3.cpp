@@ -208,29 +208,28 @@ bool initResources() {
 
     for (auto& plane : scene.planes) {
         initBuffers(plane);
-        plane->model_transform = glm::translate(glm::mat4(1.0f), glm::vec3(-5.f, -6.f, -5.f));
     }
 
     // Setup initial plane positions
     // Mid-right plane
     scene.planes[1]->model_transform = glm::translate(
         scene.planes[1]->model_transform,
-        glm::vec3(10.f, 1.f, 10.f)
+        glm::vec3(10.f, 0.f, 10.f)
     );
     // Center plane
     scene.planes[2]->model_transform = glm::translate(
         scene.planes[2]->model_transform,
-        glm::vec3(-10.f, 1.f, -10.f)
+        glm::vec3(20.f, 0.f, 20.f)
     );
     // Mid-left plane
     scene.planes[3]->model_transform = glm::translate(
         scene.planes[3]->model_transform,
-        glm::vec3(-18.f, 1.f, 0.f)
+        glm::vec3(-10.f, 0.f, 10.f)
     );
     // Bottom-left plane.
     scene.planes[4]->model_transform = glm::translate(
         scene.planes[4]->model_transform,
-        glm::vec3(-20.f, 1.f, 12.f)
+        glm::vec3(-20.f, 0.f, 20.f)
     );
 
 
@@ -283,7 +282,7 @@ void drawMesh(Mesh* mesh) {
     //Creamos matrices de modelo, vista y proyeccion
     glm::mat4 model = mesh->model_transform;
 
-    glm::mat4 view  = glm::lookAt(glm::vec3(10.0f, 10.0f, 10.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 view  = glm::lookAt(glm::vec3(0.0f, 50.0f, 50.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     glm::mat4 projection = glm::perspective(45.0f, 1.0f * screen_width / screen_height, 0.1f, 100.0f);
     glm::mat4 mvp = projection * view ;
 
