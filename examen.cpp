@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <cstdlib>
 #include <cmath>
 #include <vector>
@@ -24,18 +25,91 @@ GLfloat* surface_color;
 
 int screen_width = 800, screen_height = 800;
 
+bool read_control_file(
+    const char *filename, 
+    std::vector<GLfloat>& control_points, 
+    std::vector<GLushort>& control_patches
+) {
+    if (!filename) {
+        std::cerr << "Must provide a filename" << std::endl;
+        return false;
+    }
+    std::ifstream input(filename);
+    if (!input) {
+        std::cerr << "Error opening file: " << filename << std::endl;
+        return false;
+    }
+    int num_control_points, num_control_patches;
+    input >> num_control_points >> num_control_patches;
+    
+    for (int i = 0; i < num_control_points && input && !input.eof(); i++) {
+        float p1, p2, p3;
+        input >> p1 >> p2 >> p3;
+        if (!input) {
+            std::cerr << "Error reading control points. Line: " << i + 1 << std::endl;
+            break;
+        }
+        control_points.push_back(p1);
+        control_points.push_back(p2);
+        control_points.push_back(p3);
+    }
+    if (!input) {
+        std::cerr << "Error reading control points" << std::endl;
+        return false;
+    }
+    if (control_points.size() / 3 != num_control_points) {
+        std::cerr << "Error reading control points. Size mismatch, expected " << num_control_points << ", got " << control_points.size() / 3 << std::endl;
+        return false;
+    }
+
+    for (int i = 0; i < num_control_patches && input && !input.eof(); i++) {
+        ushort p1, p2, p3, p4;
+        for (int j = 0; j < 4; j++) {
+            input >> p1 >> p2 >> p3 >> p4;
+            if (!input) {
+                std::cerr << "Error reading control patches. Line: " << i + 1 << std::endl;
+                break;
+            }
+            control_patches.push_back(p1);
+            control_patches.push_back(p2);
+            control_patches.push_back(p3);
+            control_patches.push_back(p4);
+        }
+    }
+
+    if (!input) {
+        std::cerr << "Error reading control patches" << std::endl;
+        return false;
+    }
+
+    if (control_patches.size() / 16 != num_control_patches) {
+        std::cerr << "Error reading control patches. Size mismatch, expected " << num_control_patches << ", got " << control_patches.size() / 16 << std::endl;
+        return false;
+    }
+
+    return true;
+}
+
 bool init_resources() {
 
     /*EXAMEN: Asignar memoria y valores a surface_vertices y surface_color*/
+    std::vector<GLfloat> control_points;
+    std::vector<GLushort> control_patches;
 
+    if (!read_control_file("control.txt", control_points, control_patches)) {
+        std::cerr << "Error reading control file" << std::endl;
+        return false;
+    }
+    std::cout << "DEBUG: " << control_points.size() / 3 << " " << control_patches.size() / 16 << std::endl;
+    return false;
 
     glGenBuffers(1, &vbo_surface);
     glBindBuffer(GL_ARRAY_BUFFER, vbo_surface);
-    glBufferData(GL_ARRAY_BUFFER, /*EXAMEN: Tamaño de buffer*/, surface_vertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, 0/*EXAMEN: Tamaño de buffer*/, surface_vertices, GL_STATIC_DRAW);
 
     glGenBuffers(1, &vbo_color);
     glBindBuffer(GL_ARRAY_BUFFER, vbo_color);
-    glBufferData(GL_ARRAY_BUFFER, /*EXAMEN: Tamaño de buffer*/, surface_color, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, 0/*EXAMEN: Tamaño de buffer*/, surface_color, GL_STATIC_DRAW);
 
     GLint link_ok = GL_FALSE;
     GLuint vs, fs;
@@ -116,7 +190,7 @@ void onDisplay() {
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo_surface);
 
-    glDrawArrays(GL_POINTS, 0, /*EXAMEN: Numero de puntos*/);
+    glDrawArrays(GL_POINTS, 0, 0/*EXAMEN: Numero de puntos*/);
 
     glDisableVertexAttribArray(attribute_coord3d);
     glDisableVertexAttribArray(attribute_color);
