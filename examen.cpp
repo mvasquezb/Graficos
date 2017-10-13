@@ -11,6 +11,59 @@
 #include <glm/gtc/type_ptr.hpp>
 #include "shader_utils.h"
 
+class Surface {
+public:
+    ~Surface() {
+        clearBuffers();
+    }
+    void clearBuffers() {
+        glDeleteBuffers(1, &vbo_surface);
+        glDeleteBuffers(1, &vbo_color);
+    }
+    void bindDataTo(GLint attribId) {
+        glBindBuffer(GL_ARRAY_BUFFER, vbo_surface);
+        glVertexAttribPointer(
+            attribId,
+            3,
+            GL_FLOAT,
+            GL_FALSE,
+            0, 0
+        );
+    }
+    void bindColorTo(GLint attribId) {
+        glBindBuffer(GL_ARRAY_BUFFER, vbo_color);
+        glVertexAttribPointer(
+            attribId,
+            3,
+            GL_FLOAT,
+            GL_FALSE,
+            0, 0
+        );
+    }
+    void configBufferData() {
+        glGenBuffers(1, &vbo_surface);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo_surface);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * points.size(), &points[0], GL_STATIC_DRAW);
+    }
+    void configBufferColor() {
+        glGenBuffers(1, &vbo_color);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo_color);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * colors.size(), &colors[0], GL_STATIC_DRAW);
+    }
+    void drawArrays() {
+        glBindBuffer(GL_ARRAY_BUFFER, vbo_surface);
+        glDrawArrays(GL_LINE_STRIP, 0, points.size() / 3);
+    }
+
+
+    GLuint vbo_surface;
+    GLuint vbo_color;
+    std::vector<GLfloat> points;
+    std::vector<GLfloat> colors;
+    int numSteps;
+    int numColors;
+};
+
 GLuint vbo_surface;
 GLuint vbo_color;
 GLint uniform_mvp;
@@ -100,6 +153,9 @@ bool init_resources() {
         std::cerr << "Error reading control file" << std::endl;
         return false;
     }
+
+
+
     std::cout << "DEBUG: " << control_points.size() / 3 << " " << control_patches.size() / 16 << std::endl;
     return false;
 
