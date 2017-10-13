@@ -3,6 +3,8 @@
 #include <cstdlib>
 #include <cmath>
 #include <vector>
+#include <array>
+#include <valarray>
 
 #include <GL/glew.h>
 #include <GL/freeglut.h>
@@ -55,7 +57,6 @@ public:
         glDrawArrays(GL_LINE_STRIP, 0, points.size() / 3);
     }
 
-
     GLuint vbo_surface;
     GLuint vbo_color;
     std::vector<GLfloat> points;
@@ -64,6 +65,9 @@ public:
     int numColors;
 };
 
+/**
+ * Global variables
+ */
 GLuint vbo_surface;
 GLuint vbo_color;
 GLint uniform_mvp;
@@ -77,6 +81,15 @@ GLfloat* surface_vertices;
 GLfloat* surface_color;
 
 int screen_width = 800, screen_height = 800;
+
+int nSteps = 100;
+int factorial[4] = {1, 1, 2, 6};
+
+Surface *surface;
+
+/**
+ * End Global variables
+ */
 
 bool read_control_file(
     const char *filename, 
@@ -143,9 +156,69 @@ bool read_control_file(
     return true;
 }
 
-bool init_resources() {
+float binomial(int n, int i) {
+    return 1.0 * factorial[n] / (factorial[i] * factorial[n - i]);
+}
 
-    /*EXAMEN: Asignar memoria y valores a surface_vertices y surface_color*/
+float bernstein(int n, int i, float t) {
+    return binomial(n, i) * powf(t, i) * powf(1 - t, n - i);
+}
+
+void setupSurfaceControlMatrix(
+    Surface *surface,
+    const std::vector<GLfloat>& control_points,
+    const std::vector<GLushort>& control_patch
+) {
+    float u = 0;
+    for (int i = 0; i <= nSteps; i++) {
+        float v = 0;
+        for (int j = 0; j <= nSteps; j++) {
+            float x = 0, y = 0, z = 0;
+
+            for (int k = 0; k < 4; ++k) {
+                float bi = bernstein(3, k, u);
+
+                for (int l = 0; l < 4; ++l) {
+                    float bj = bernstein(3, l, v);
+
+                    int point_index = control_patch[k * 4 + l];
+                    
+                    x += bi * bj * control_points[point_index];
+                    y += bi * bj * control_points[point_index + 1];
+                    z += bi * bj * control_points[point_index + 2];
+                }
+            }
+
+            surface->points.push_back(x);
+            surface->points.push_back(y);
+            surface->points.push_back(z);
+
+            v += 1.0 / nSteps;
+        }
+        u += 1.0 / nSteps;
+    }
+}
+
+void setupSurfacePoints(
+    Surface *surface,
+    const std::vector<GLfloat>& control_points, 
+    const std::vector<GLushort>& control_patches
+) {
+    for (int i = 0; i < control_patches.size() / 16; i++) {
+        auto start = control_patches.begin() + 16 * i;
+        auto end = start + 16;
+        auto indices = std::vector<GLushort>(start, end);
+        setupSurfaceControlMatrix(surface, control_points, indices);
+    }
+
+    for (int i = 0; i < surface->points.size() / 3; ++i) {
+        surface->colors.push_back(0.0);
+        surface->colors.push_back(1.0);
+        surface->colors.push_back(0.0);
+    }
+}
+
+bool init_resources() {
     std::vector<GLfloat> control_points;
     std::vector<GLushort> control_patches;
 
@@ -154,23 +227,20 @@ bool init_resources() {
         return false;
     }
 
+    surface = new Surface;
 
+    setupSurfacePoints(surface, control_points, control_patches);
 
-    std::cout << "DEBUG: " << control_points.size() / 3 << " " << control_patches.size() / 16 << std::endl;
-    return false;
-
-    glGenBuffers(1, &vbo_surface);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_surface);
-    glBufferData(GL_ARRAY_BUFFER, 0/*EXAMEN: Tamaño de buffer*/, surface_vertices, GL_STATIC_DRAW);
-
-    glGenBuffers(1, &vbo_color);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_color);
-    glBufferData(GL_ARRAY_BUFFER, 0/*EXAMEN: Tamaño de buffer*/, surface_color, GL_STATIC_DRAW);
+    surface->configBufferData();
+    surface->configBufferColor();
 
     GLint link_ok = GL_FALSE;
-    GLuint vs, fs;
-    if((vs = create_shader("basic3.v.glsl", GL_VERTEX_SHADER))==0) return false;
-    if((fs = create_shader("basic3.f.glsl", GL_FRAGMENT_SHADER))==0) return false;
+    GLuint vs = create_shader("basic3.v.glsl", GL_VERTEX_SHADER);
+    GLuint fs = create_shader("basic3.f.glsl", GL_FRAGMENT_SHADER);
+
+    if(!vs || !fs) {
+        return false;
+    }
 
     program = glCreateProgram();
     glAttachShader(program, vs);
@@ -201,8 +271,6 @@ bool init_resources() {
         return false;
     }
 
-
-
     return true;
 }
 
@@ -222,32 +290,12 @@ void onDisplay() {
     glUniformMatrix4fv(uniform_mvp, 1, GL_FALSE, glm::value_ptr(mvp));
 
     glEnableVertexAttribArray(attribute_coord3d);
-
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_surface);
-
-    glVertexAttribPointer(
-        attribute_coord3d,
-        3,
-        GL_FLOAT,
-        GL_FALSE,
-        0, 0
-    );
-
     glEnableVertexAttribArray(attribute_color);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_color);
-
-    glVertexAttribPointer(
-        attribute_color,
-        3,
-        GL_FLOAT,
-        GL_FALSE,
-        0, 0
-    );
-
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_surface);
-
-    glDrawArrays(GL_POINTS, 0, 0/*EXAMEN: Numero de puntos*/);
-
+    
+    surface->bindDataTo(attribute_coord3d);
+    surface->bindColorTo(attribute_color);
+    surface->drawArrays();
+    
     glDisableVertexAttribArray(attribute_coord3d);
     glDisableVertexAttribArray(attribute_color);
     glutSwapBuffers();
@@ -260,15 +308,18 @@ void onReshape(int w, int h) {
     glViewport(0,0,screen_width, screen_height);
 }
 
+void onKeyPress(unsigned char key, int x, int y) {
+    switch (key) {
+        case 27: {
+            glutLeaveMainLoop();
+            break;
+        }
+    }
+}
+
 void free_resources() {
     glDeleteProgram(program);
-    glDeleteBuffers(1, &vbo_surface);
-    glDeleteBuffers(1, &vbo_color);
-
-
-    /*EXAMEN - OPCIONAL: elimine la memoria que se utilizó en los buffers. Use delete o free en los arreglos
-                surface_vertices y surface_color
-    */
+    delete surface;
 }
 
 int main(int argc, char* argv[]) {
@@ -290,6 +341,7 @@ int main(int argc, char* argv[]) {
     }
 
     if(init_resources()) {
+        glutKeyboardFunc(onKeyPress);
         glutDisplayFunc(onDisplay);
         glutReshapeFunc(onReshape);
         glEnable(GL_BLEND);
