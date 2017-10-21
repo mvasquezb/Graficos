@@ -31,19 +31,18 @@ GLfloat alfa=0.0, beta=0.0, theta=0.0, phi=0.0;
 
 int screen_width = 800, screen_height = 800;
 
-typedef struct Vertex{
+struct Vertex{
     float x, y, z;
     float nx, ny, nz;
     int numTA;
+};
 
-}Vertex;
-
-typedef struct Triangle{
+struct Triangle{
     unsigned int indices[3];
     float nx, ny, nz;
-}Triangle;
+};
 
-typedef struct Mesh{
+struct Mesh{
     //Informacion de estructura
     int numVertices;
     int numTriangles;
@@ -73,26 +72,26 @@ typedef struct Mesh{
     glm::vec4 specular;
     float s;
 
-}Mesh;
+};
 
-typedef struct Scene{
+struct Scene{
     int numMeshes;
     Mesh* meshes[5];
-}Scene;
+};
 
 
 Scene scene;
 //Mesh* mainMesh;
 int numEdges;
 
-Mesh* leerOFF(const char* filename){
+Mesh* leerOFF(const char* filename) {
     FILE* fid = fopen(filename, "rt");
 
     //Leer formato
     char buffer[1024];
     fscanf(fid, "%s", buffer);
 
-    if(strcmp(buffer, "OFF")!=0){
+    if(strcmp(buffer, "OFF")!=0) {
         printf("Error de formato\n");
         exit(EXIT_FAILURE);
     }
@@ -112,7 +111,7 @@ Mesh* leerOFF(const char* filename){
     mesh->center.z = 0.0;
 
     int i;
-    for(i = 0; i < nverts; i++){
+    for(i = 0; i < nverts; i++) {
         fscanf(fid, "%f %f %f", &mesh->vertices[i].x,
                &mesh->vertices[i].y,
                &mesh->vertices[i].z);
@@ -126,7 +125,7 @@ Mesh* leerOFF(const char* filename){
         mesh->vertices[i].numTA = 0;
     }
 
-    for(i = 0; i < ntriang; i++){
+    for(i = 0; i < ntriang; i++) {
         int nv;
         fscanf(fid, "%d %d %d %d", &nv, &mesh->triangles[i].indices[0],
                                         &mesh->triangles[i].indices[1],
@@ -141,7 +140,7 @@ Mesh* leerOFF(const char* filename){
     float maxx = -1.0e-10, maxy= -1.0e-10, maxz= -1.0e-10;
     float minx = 1.0e10, miny= 1.0e10, minz= 1.0e10;
 
-    for(int i = 0; i < mesh->numVertices; i++){
+    for(int i = 0; i < mesh->numVertices; i++) {
         if(mesh->vertices[i].x < minx)
             minx = mesh->vertices[i].x;
         if(mesh->vertices[i].x > maxx)
@@ -158,7 +157,7 @@ Mesh* leerOFF(const char* filename){
 
     unsigned int p0, p1, p2;
     //Computar normales de los triángulos
-    for(int i = 0; i < mesh->numTriangles; i++){
+    for(int i = 0; i < mesh->numTriangles; i++) {
         p0 = mesh->triangles[i].indices[0];
         p1 = mesh->triangles[i].indices[1];
         p2 = mesh->triangles[i].indices[2];
@@ -184,7 +183,7 @@ Mesh* leerOFF(const char* filename){
         mesh->vertices[p2].nz += C.z;   mesh->vertices[p2].numTA++;
     }
 
-    for(int i = 0; i < mesh->numVertices; i++){
+    for(int i = 0; i < mesh->numVertices; i++) {
         mesh->vertices[i].nx /= mesh->vertices[i].numTA;
         mesh->vertices[i].ny /= mesh->vertices[i].numTA;
         mesh->vertices[i].nz /= mesh->vertices[i].numTA;
@@ -207,14 +206,14 @@ Mesh* leerOFF(const char* filename){
     return mesh;
 }
 
-void init_buffers(Mesh* mesh){
+void initBuffers(Mesh* mesh) {
     mesh->object_vertices = new GLfloat[mesh->numVertices * 3];
     mesh->object_normal = new GLfloat[mesh->numVertices * 3];
     mesh->object_indexes = new GLushort[mesh->numTriangles * 3];
 
     int i;
 
-    for(i = 0; i < mesh->numVertices; i++){
+    for(i = 0; i < mesh->numVertices; i++) {
         mesh->object_vertices[3 * i] = mesh->vertices[i].x;
         mesh->object_vertices[3 * i + 1] = mesh->vertices[i].y;
         mesh->object_vertices[3 * i + 2] = mesh->vertices[i].z;
@@ -224,7 +223,7 @@ void init_buffers(Mesh* mesh){
         mesh->object_normal[3 * i + 2] = mesh->vertices[i].nz;
     }
 
-    for(i = 0; i < mesh->numTriangles; i++){
+    for(i = 0; i < mesh->numTriangles; i++) {
         mesh->object_indexes[3 * i] = mesh->triangles[i].indices[0];
         mesh->object_indexes[3 * i + 1] = mesh->triangles[i].indices[1];
         mesh->object_indexes[3 * i + 2] = mesh->triangles[i].indices[2];
@@ -248,19 +247,19 @@ void init_buffers(Mesh* mesh){
 }
 
 
-bool init_resources(){
+bool initResources() {
 
     scene.meshes[0] = leerOFF("NR34.off");
     scene.meshes[1] = leerOFF("NR0.off");
     scene.numMeshes = 2;
 
-    scene.meshes[0]->model_transform = glm::translate(glm::mat4(1.0f), glm::vec3(-1.0f, 0.0f, 0.0f)) *
-                                        glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f),
-                                                    glm::vec3(1.0f, 0.0f, 0.0f));
+    scene.meshes[0]->model_transform = 
+        glm::translate(glm::mat4(1.0f), glm::vec3(-1.0f, 0.0f, 0.0f)) *
+        glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
 
-    scene.meshes[1]->model_transform = glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 0.0f, 0.0f)) *
-                                        glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f),
-                                                    glm::vec3(1.0f, 0.0f, 0.0f));
+    scene.meshes[1]->model_transform = 
+        glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 0.0f, 0.0f)) *
+        glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
 
     scene.meshes[0]->ambient = glm::vec4(0.2,0.2,0.2,1.0);
     scene.meshes[0]->diffuse = glm::vec4(1.0, 0.0, 0.0, 1.0);
@@ -272,13 +271,16 @@ bool init_resources(){
     scene.meshes[1]->specular = glm::vec4(1.0,1.0,1.0,1.0);
     scene.meshes[1]->s = 100.0;
 
-    init_buffers(scene.meshes[0]);
-    init_buffers(scene.meshes[1]);
+    initBuffers(scene.meshes[0]);
+    initBuffers(scene.meshes[1]);
 
     GLint link_ok = GL_FALSE;
-    GLuint vs, fs;
-    if((vs = create_shader("phong3.v.glsl", GL_VERTEX_SHADER))==0) return false;
-    if((fs = create_shader("phong3.f.glsl", GL_FRAGMENT_SHADER))==0) return false;
+    GLuint vs = create_shader("phong3.v.glsl", GL_VERTEX_SHADER);
+    GLuint fs = create_shader("phong3.f.glsl", GL_FRAGMENT_SHADER);
+    
+    if(!vs || !fs) {
+        return false;
+    }
 
     program = glCreateProgram();
     glAttachShader(program, vs);
@@ -286,80 +288,80 @@ bool init_resources(){
     glLinkProgram(program);
 
     glGetProgramiv(program, GL_LINK_STATUS, &link_ok);
-    if(!link_ok){
+    if(!link_ok) {
         std::cout << "Problemas con el Shader" << std::endl;
         return false;
     }
 
     attribute_coord = glGetAttribLocation(program, "coord3d");
-    if(attribute_coord == -1){
+    if(attribute_coord == -1) {
         std::cout << "No se puede asociar el atributo coord" << std::endl;
         return false;
     }
 
     attribute_normal = glGetAttribLocation(program, "normal");
-    if(attribute_normal == -1){
+    if(attribute_normal == -1) {
             std::cout << "No se puede asociar el atributo normal" << std::endl;
             return false;
     }
 
     uniform_m = glGetUniformLocation(program, "m");
-    if(uniform_m == -1){
+    if(uniform_m == -1) {
         std::cout << "No se puede asociar el uniform m" << std::endl;
         return false;
     }
 
     uniform_v = glGetUniformLocation(program, "v");
-    if(uniform_v == -1){
+    if(uniform_v == -1) {
         std::cout << "No se puede asociar el uniform v" << std::endl;
         return false;
     }
     uniform_p = glGetUniformLocation(program, "p");
-    if(uniform_p == -1){
+    if(uniform_p == -1) {
         std::cout << "No se puede asociar el uniform p" << std::endl;
         return false;
     }
 
     uniform_m_3x3_inv_transp = glGetUniformLocation(program, "m_3x3_inv_transp");
-    if(uniform_m_3x3_inv_transp == -1){
+    if(uniform_m_3x3_inv_transp == -1) {
         std::cout << "No se puede asociar el uniform m_3x3_inv_transp" << std::endl;
         return false;
     }
 
     uniform_v_inv = glGetUniformLocation(program, "v_inv");
-    if(uniform_v_inv == -1){
+    if(uniform_v_inv == -1) {
         std::cout << "No se puede asociar el uniform v_inv" << std::endl;
         return false;
     }
 
     uniform_mat_ambient = glGetUniformLocation(program, "mat_ambient");
-    if(uniform_mat_ambient == -1){
+    if(uniform_mat_ambient == -1) {
         std::cout << "No se puede asociar el uniform mat_ambient" << std::endl;
         return false;
     }
 
     uniform_mat_diffuse = glGetUniformLocation(program, "mat_diffuse");
-    if(uniform_mat_diffuse == -1){
+    if(uniform_mat_diffuse == -1) {
         std::cout << "No se puede asociar el uniform mat_diffuse" << std::endl;
         return false;
     }
 
     uniform_mat_specular = glGetUniformLocation(program, "mat_specular");
-    if(uniform_mat_specular == -1){
+    if(uniform_mat_specular == -1) {
         std::cout << "No se puede asociar el uniform mat_specular" << std::endl;
         return false;
     }
 
     uniform_mat_s = glGetUniformLocation(program, "mat_s");
-    if(uniform_mat_s == -1){
+    if(uniform_mat_s == -1) {
         std::cout << "No se puede asociar el uniform mat_s" << std::endl;
         return false;
     }
     return true;
 }
 
-void graficarObjeto(Mesh* mesh){
-        //Creamos matrices de modelo, vista y proyeccion
+void drawMesh(Mesh* mesh) {
+    //Creamos matrices de modelo, vista y proyeccion
     glm::mat4 model =   mesh->model_transform *
                         glm::scale(glm::mat4(1.0f), glm::vec3(mesh->scale,
                                                               mesh->scale,
@@ -427,28 +429,37 @@ void graficarObjeto(Mesh* mesh){
     glDisableVertexAttribArray(attribute_normal);
 }
 
-void onDisplay(){
+void onDisplay() {
 
     glClearColor(1.0, 1.0, 1.0, 1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     for(int i = 0; i < scene.numMeshes; i++)
-        graficarObjeto(scene.meshes[i]);
+        drawMesh(scene.meshes[i]);
 
     glutSwapBuffers();
 }
 
-void onReshape(int w, int h){
+void onReshape(int w, int h) {
     screen_width = w;
     screen_height = h;
 
     glViewport(0,0,screen_width, screen_height);
 }
 
-void free_resources(){
+void onKeyPress(unsigned char key, int x, int y) {
+    switch(key) {
+        case 27: {
+            glutLeaveMainLoop();
+            break;
+        }
+    }
+}
+
+void freeResources() {
     glDeleteProgram(program);
 
-    for(int i = 0; i < scene.numMeshes; i++){
+    for(int i = 0; i < scene.numMeshes; i++) {
         glDeleteBuffers(1, &scene.meshes[i]->vbo_object);
         glDeleteBuffers(1, &scene.meshes[i]->ibo_object);
         glDeleteBuffers(1, &scene.meshes[i]->vbo_normal);
@@ -461,7 +472,7 @@ void free_resources(){
     }
 }
 
-int main(int argc, char* argv[]){
+int main(int argc, char* argv[]) {
     glutInit(&argc, argv);
     glutInitContextVersion(2,0);
     glutInitDisplayMode(GLUT_RGBA | GLUT_ALPHA | GLUT_DEPTH | GLUT_DOUBLE);
@@ -469,25 +480,26 @@ int main(int argc, char* argv[]){
     glutCreateWindow("OpenGL");
 
     GLenum glew_status = glewInit();
-    if(glew_status != GLEW_OK){
+    if(glew_status != GLEW_OK) {
         std::cout << "Error inicializando GLEW" << std::endl;
         exit(EXIT_FAILURE);
     }
 
-    if(!GLEW_VERSION_2_0){
+    if(!GLEW_VERSION_2_0) {
         std::cout << "Tu tarjeta grafica no soporta OpenGL 2.0" << std::endl;
         exit(EXIT_FAILURE);
     }
 
-    if(init_resources()){
+    if(initResources()) {
         glutDisplayFunc(onDisplay);
         glutReshapeFunc(onReshape);
+        glutKeyboardFunc(onKeyPress);
         glEnable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         glutMainLoop();
     }
 
-    free_resources();
+    freeResources();
     exit(EXIT_SUCCESS);
 }
