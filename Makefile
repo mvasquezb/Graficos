@@ -1,19 +1,19 @@
-TARGET=get_info
+TARGET=cube_texture
 BASE_DIR=/home/pmvb/Code/Graficos
 
 FREEGLUT_LIB_DIR=$(BASE_DIR)/freeglut/lib
 GLEW_LIB_DIR=$(BASE_DIR)/glew/lib
 
+CCSTD=c++11
 LIBS=-L"$(FREEGLUT_LIB_DIR)" -lfreeglut  -L"$(GLEW_LIB_DIR)" -lGLEW -lGLU -lGL
-CFLAGS=-I"$(BASE_DIR)/freeglut/include" -I"$(BASE_DIR)/glew/include" -I"$(BASE_DIR)/glm"
-CSTD=-std=c++11
+CFLAGS=-I"$(BASE_DIR)/freeglut/include" -I"$(BASE_DIR)/glew/include" -I"$(BASE_DIR)/glm" -I"$(BASE_DIR)/soil/src" -std=$(CCSTD)
 
 .PHONY: default all clean
 
 default: $(TARGET)
 all: default
 
-OBJECTS = get_info.o
+OBJECTS = cube_texture.o shader_utils.o image_DXT.o image_helper.o SOIL.o stb_image_aug.o
 HEADERS =
 
 %.o:	%.cpp	$(HEADERS)
