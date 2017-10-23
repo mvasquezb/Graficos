@@ -1,4 +1,4 @@
-TARGET=lab3
+TARGET=lab4
 BASE_DIR=/home/alulab/Code/Graficos
 
 FREEGLUT_LIB_DIR=$(BASE_DIR)/freeglut/lib
@@ -13,7 +13,7 @@ CFLAGS=-I"$(BASE_DIR)/freeglut/include" -I"$(BASE_DIR)/glew/include" -I"$(BASE_D
 default: $(TARGET)
 all: default
 
-OBJECTS = lab3.o shader_utils.o
+OBJECTS = lab4.o shader_utils.o
 HEADERS =
 
 %.o:	%.cpp	$(HEADERS)
