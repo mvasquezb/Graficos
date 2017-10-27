@@ -6,6 +6,7 @@
 #include <vector>
 #include <string>
 #include <sstream>
+#include <algorithm>
 
 #include <GL/glew.h>
 
@@ -17,16 +18,18 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#include "res_texture.c"
+#include <SOIL.h>
+
+// #include "res_texture.c"
 
 struct TextureVertix {
-  int vertix_index;
-  int texture_index;
+  ushort vertix_index;
+  ushort texture_index;
   int normal_index;
 
   friend std::istream& operator >> (std::istream& input, TextureVertix& vertix) {
-    int vertix_index, texture_index, normal_index;
-    while (input >> vertix_index >> texture_index >> normal_index) {
+    ushort vertix_index, texture_index, normal_index;
+    if (input >> vertix_index >> texture_index >> normal_index) {
       // std::cout << vertix_index << " " << texture_index << " " << normal_index << std::endl;
       vertix.vertix_index = vertix_index;
       vertix.texture_index = texture_index;
@@ -75,13 +78,37 @@ std::vector<Side> transform_side_to_triangles(const Side& side) {
   std::vector<Side> new_sides;
   // Copy vertices to new variable
   auto vertices = side.texture_vertices;
-  int missing_vertices = vertices.size() % 3;
-  for (int i = 0; i < missing_vertices; i++) {
-    vertices.push_back(vertices[i]);
+
+  int num_triangles = vertices.size() / 3;
+  int missing_vertices;
+  if ((vertices.size() % 3) == 0) {
+     missing_vertices = 0;
+  } else {
+    missing_vertices = 3 - (vertices.size() % 3);
   }
-  std::cout << "Transformed Vertices: " << vertices.size() << std::endl;
+
+  std::vector<TextureVertix> new_vertices;
+  for (int i = 0; i < num_triangles; i++) {
+    new_vertices.push_back(vertices[0]);
+    new_vertices.push_back(vertices[i + 1]);
+    new_vertices.push_back(vertices[i + 2]);
+    // for (int j = 0; j < missing_vertices - 1; j++) {
+    //   new_vertices.push_back(vertices[i * 2 + j]);
+    // }
+  }
+  for (int i = missing_vertices; i > 0; i--) {
+    new_vertices.push_back(vertices[vertices.size() - i]);
+  }
+  vertices.insert(vertices.end(), new_vertices.begin(), new_vertices.end());
+
   // Make sides grabbing groups of 3 vertices from `vertices`
-  //
+  for (auto it = vertices.begin(); it != vertices.end(); it += 3) {
+    Side side;
+    side.texture_vertices.push_back(*it);
+    side.texture_vertices.push_back(*(it + 1));
+    side.texture_vertices.push_back(*(it + 2));
+    new_sides.push_back(side);
+  }
   return new_sides;
 }
 
@@ -94,6 +121,13 @@ void transform_sides_to_triangles(OBJ *obj_res) {
       auto aux_sides = transform_side_to_triangles(side);
       new_sides.insert(new_sides.end(), aux_sides.begin(), aux_sides.end());
     }
+  }
+  obj_res->sides = std::move(new_sides);
+  for (auto& side : obj_res->sides) {
+    for (auto& vertix : side.texture_vertices) {
+      std::cout << vertix.vertix_index << " ";
+    }
+    std::cout << std::endl;
   }
 }
 
@@ -143,9 +177,6 @@ bool read_side(std::ifstream& input, OBJ *obj_res) {
   std::string line;
   if (getline(input, line)) {
     std::istringstream line_input(line);
-    // Skip line type
-    std::string type;
-    line_input >> type;
     TextureVertix vertix;
     while (line_input >> vertix) {
       side.texture_vertices.push_back(vertix);
@@ -236,39 +267,6 @@ int init_resources()
   }
   std::cout << "Read file correctly" << std::endl;
 
-  // GLfloat cube_vertices[] = {
-  //   // front
-  //   -1.0, -1.0,  1.0,
-  //    1.0, -1.0,  1.0,
-  //    1.0,  1.0,  1.0,
-  //   -1.0,  1.0,  1.0,
-  //   // top
-  //   -1.0,  1.0,  1.0,
-  //    1.0,  1.0,  1.0,
-  //    1.0,  1.0, -1.0,
-  //   -1.0,  1.0, -1.0,
-  //   // back
-  //    1.0, -1.0, -1.0,
-  //   -1.0, -1.0, -1.0,
-  //   -1.0,  1.0, -1.0,
-  //    1.0,  1.0, -1.0,
-  //   // bottom
-  //   -1.0, -1.0, -1.0,
-  //    1.0, -1.0, -1.0,
-  //    1.0, -1.0,  1.0,
-  //   -1.0, -1.0,  1.0,
-  //   // left
-  //   -1.0, -1.0, -1.0,
-  //   -1.0, -1.0,  1.0,
-  //   -1.0,  1.0,  1.0,
-  //   -1.0,  1.0, -1.0,
-  //   // right
-  //    1.0, -1.0,  1.0,
-  //    1.0, -1.0, -1.0,
-  //    1.0,  1.0, -1.0,
-  //    1.0,  1.0,  1.0,
-  // };
-
   glGenBuffers(1, &vbo_cube_vertices);
   glBindBuffer(GL_ARRAY_BUFFER, vbo_cube_vertices);
   glBufferData(
@@ -277,17 +275,6 @@ int init_resources()
     &obj_res.vertices[0],
     GL_STATIC_DRAW
   );
-
-  // GLfloat cube_texcoords[48];
-
-  // cube_texcoords[0] = 0.0;  cube_texcoords[1] = 0.0;
-  // cube_texcoords[2] = 1.0;  cube_texcoords[3] = 0.0;
-  // cube_texcoords[4] = 1.0;  cube_texcoords[5] = 1.0;
-  // cube_texcoords[6] = 0.0;  cube_texcoords[7] = 1.0;
-
-  // for(int i = 8; i < 48; i++){
-  //   cube_texcoords[i] = cube_texcoords[i%8];
-  // }
 
   glGenBuffers(1, &vbo_cube_texcoords);
   glBindBuffer(GL_ARRAY_BUFFER, vbo_cube_texcoords);
@@ -298,33 +285,19 @@ int init_resources()
     GL_STATIC_DRAW
   );
 
-  GLushort cube_elements[] = {
-    // front
-    0,  1,  2,
-    2,  3,  0,
-    // top
-    4,  5,  6,
-    6,  7,  4,
-    // back
-    8,  9, 10,
-    10, 11,  8,
-    // bottom
-    12, 13, 14,
-    14, 15, 12,
-    // left
-    16, 17, 18,
-    18, 19, 16,
-    // right
-    20, 21, 22,
-    22, 23, 20,
-  };
+  std::vector<GLushort> cube_elements;
+  for (auto& side : obj_res.sides) {
+    for (auto& vertix : side.texture_vertices) {
+      cube_elements.push_back(vertix.vertix_index);
+    }
+  }
 
   glGenBuffers(1, &ibo_cube_elements);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo_cube_elements);
   glBufferData(
     GL_ELEMENT_ARRAY_BUFFER,
-    sizeof(cube_elements),
-    cube_elements,
+    cube_elements.size() * sizeof(GLushort),
+    &cube_elements[0],
     GL_STATIC_DRAW
   );
 
@@ -332,16 +305,25 @@ int init_resources()
   glBindTexture(GL_TEXTURE_2D, texture_id);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
+  int width, height, channels;
+  unsigned char *pixel_data = SOIL_load_image(
+    "House_3_AO.png",
+    &width,
+    &height,
+    &channels,
+    SOIL_LOAD_L
+  );
+
   glTexImage2D(
     GL_TEXTURE_2D,
     0,
     GL_RGB,
-    res_texture.width,
-    res_texture.height,
+    width,
+    height,
     0,
     GL_RGB,
     GL_UNSIGNED_BYTE,
-    res_texture.pixel_data
+    pixel_data
   );
 
 
