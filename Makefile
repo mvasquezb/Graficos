@@ -6,14 +6,14 @@ GLEW_LIB_DIR=$(BASE_DIR)/glew/lib
 
 CCSTD=c++11
 LIBS=-L"$(FREEGLUT_LIB_DIR)" -lfreeglut  -L"$(GLEW_LIB_DIR)" -lGLEW -lGLU -lGL
-CFLAGS=-I"$(BASE_DIR)/freeglut/include" -I"$(BASE_DIR)/glew/include" -I"$(BASE_DIR)/glm" -std=$(CCSTD)
+CFLAGS=-I"$(BASE_DIR)/freeglut/include" -I"$(BASE_DIR)/glew/include" -I"$(BASE_DIR)/glm" -I"$(BASE_DIR)/soil" -std=$(CCSTD)
 
 .PHONY: default all clean
 
 default: $(TARGET)
 all: default
 
-OBJECTS = lab4.o shader_utils.o
+OBJECTS = lab4.o shader_utils.o image_DXT.o image_helper.o SOIL.o stb_image_aug.o
 HEADERS =
 
 %.o:	%.cpp	$(HEADERS)
