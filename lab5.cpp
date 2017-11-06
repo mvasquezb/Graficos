@@ -80,6 +80,45 @@ typedef struct Scene{
     Mesh* meshes[5];
 }Scene;
 
+/**
+ * Add LightSource struct definition in cpp
+ */
+struct LightSource{
+    /**
+     * Constructor
+     */
+    LightSource(
+        glm::vec4 position,
+        glm::vec4 diffuse,
+        glm::vec4 specular,
+        float constantAttenuation,
+        float linearAttenuation,
+        float quadraticAttenuation
+    ): position(position), diffuse(diffuse), specular(specular),
+       constantAttenuation(constantAttenuation), linearAttenuation(linearAttenuation),
+       quadraticAttenuation(quadraticAttenuation) {}
+    /**
+     * Properties
+     */       
+    glm::vec4 position;
+    glm::vec4 diffuse;
+    glm::vec4 specular;
+    float constantAttenuation, linearAttenuation, quadraticAttenuation;
+};
+
+LightSource light0 = LightSource(
+    glm::vec4(0.0, 1.0, 2.0, 1.0),
+    glm::vec4(1.0, 1.0, 1.0, 1.0),
+    glm::vec4(1.0, 1.0, 1.0, 1.0),
+    0.0, 1.0, 0.0
+);
+
+LightSource light1 = LightSource(
+    glm::vec4(2.0, 0.0, 0.0, 1.0),
+    glm::vec4(1.0, 1.0, 1.0, 1.0),
+    glm::vec4(1.0, 1.0, 1.0, 1.0),
+    0.0, 1.0, 0.0
+);
 
 Scene scene;
 //Mesh* mainMesh;
