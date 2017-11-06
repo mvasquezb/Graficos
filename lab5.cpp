@@ -477,6 +477,13 @@ void onDisplay(){
     glutSwapBuffers();
 }
 
+/**
+ * Add onIdle function to handle animation
+ */
+void onIdle() {
+    
+}
+
 void onReshape(int w, int h){
     screen_width = w;
     screen_height = h;
@@ -484,6 +491,9 @@ void onReshape(int w, int h){
     glViewport(0,0,screen_width, screen_height);
 }
 
+/**
+ * Add keyboard function to handle key press
+ */
 void onKeyPress(unsigned char key, int x, int y) {
     switch (key) {
         case 27: {
@@ -531,6 +541,7 @@ int main(int argc, char* argv[]){
         glutDisplayFunc(onDisplay);
         glutReshapeFunc(onReshape);
         glutKeyboardFunc(onKeyPress);
+        glutIdleFunc(onIdle);
         glEnable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
