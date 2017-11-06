@@ -484,6 +484,15 @@ void onReshape(int w, int h){
     glViewport(0,0,screen_width, screen_height);
 }
 
+void onKeyPress(unsigned char key, int x, int y) {
+    switch (key) {
+        case 27: {
+            glutLeaveMainLoop();
+            break;
+        }
+    }
+}
+
 void free_resources(){
     glDeleteProgram(program);
 
@@ -521,6 +530,7 @@ int main(int argc, char* argv[]){
     if(init_resources()){
         glutDisplayFunc(onDisplay);
         glutReshapeFunc(onReshape);
+        glutKeyboardFunc(onKeyPress);
         glEnable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
