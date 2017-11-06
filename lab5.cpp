@@ -28,6 +28,7 @@ GLint uniform_mat_s;
 //Variables para el movimiento
 GLfloat alfa=0.0, beta=0.0, theta=0.0, phi=0.0;
 
+GLfloat t = 1.0f * glutGet(GLUT_ELAPSED_TIME);
 
 int screen_width = 800, screen_height = 800;
 
@@ -83,8 +84,11 @@ typedef struct Scene{
 /**
  * Add light source position mirroring initial glsl
  */
-glm::vec4 uniform_light0_pos = glm::vec4(0.0, 1.0, 2.0, 1.0);
-glm::vec4 uniform_light1_pos = glm::vec4(2.0, 0.0, 0.0, 1.0);
+GLint uniform_light0_pos;
+GLint uniform_light1_pos;
+
+glm::vec4 light0_pos = glm::vec4(0.0, 1.0, 2.0, 1.0);
+glm::vec4 light1_pos = glm::vec4(2.0, 0.0, 0.0, 1.0);
 
 Scene scene;
 //Mesh* mainMesh;
@@ -360,6 +364,19 @@ bool init_resources(){
         std::cout << "No se puede asociar el uniform mat_s" << std::endl;
         return false;
     }
+
+    uniform_light0_pos = glGetUniformLocation(program, "light0_pos");
+    if (uniform_light0_pos == -1) {
+        std::cout << "No se puede asociar el uniform light0_pos" << std::endl;
+        return false;
+    }
+
+    uniform_light1_pos = glGetUniformLocation(program, "light1_pos");
+    if (uniform_light1_pos == -1) {
+        std::cout << "No se puede asociar el uniform light1_pos" << std::endl;
+        return false;
+    }
+
     return true;
 }
 
@@ -396,6 +413,10 @@ void graficarObjeto(Mesh* mesh){
     glUniform4fv(uniform_mat_diffuse, 1, glm::value_ptr(mesh->diffuse));
     glUniform4fv(uniform_mat_specular,1,  glm::value_ptr(mesh->specular));
     glUniform1f(uniform_mat_s, mesh->s);
+
+    // Pass the light source directions to the shader
+    glUniform4fv(uniform_light0_pos, 1, glm::value_ptr(light0_pos));
+    glUniform4fv(uniform_light1_pos, 1, glm::value_ptr(light1_pos));
 
     glEnableVertexAttribArray(attribute_coord);
     glBindBuffer(GL_ARRAY_BUFFER, mesh->vbo_object);
@@ -447,7 +468,23 @@ void onDisplay(){
  * Add onIdle function to handle animation
  */
 void onIdle() {
+    GLfloat t1 = 10.f * glutGet(GLUT_ELAPSED_TIME);
+    GLfloat delta = t1 - t;
 
+    delta = delta / 50.0f * glm::radians(1.0f);
+    alfa = delta;
+
+    glm::mat4 light0_transform = 
+        glm::rotate(glm::mat4(1.0f), alfa, glm::vec3(0, 1, 0)) * 
+        glm::translate(glm::mat4(1.0f), glm::vec3(light0_pos));
+    light0_pos = light0_transform * glm::vec4(1.0f, 1.0f, 1.0f, 0.0f);
+
+    glm::mat4 light1_transform = 
+        glm::rotate(glm::mat4(1.0f), alfa, glm::vec3(0, 1, 0)) * 
+        glm::translate(glm::mat4(1.0f), glm::vec3(light1_pos));
+    light1_pos = light1_transform * glm::vec4(1.0f, 1.0f, 1.0f, 0.0f);
+
+    glutPostRedisplay();
 }
 
 void onReshape(int w, int h){

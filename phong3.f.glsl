@@ -11,6 +11,8 @@ uniform vec4 mat_diffuse;
 uniform vec4 mat_specular;
 uniform float mat_s;
 
+uniform vec4 light0_pos, light1_pos;
+
 out vec4 FragColor;
 
 struct LightSource{
@@ -21,14 +23,14 @@ struct LightSource{
 };
 
 LightSource light0 = LightSource(
-     vec4(0.0, 1.0, 2.0, 1.0),
+     light0_pos,
      vec4(1.0, 1.0, 1.0, 1.0),
      vec4(1.0, 1.0, 1.0, 1.0),
      0.0, 1.0, 0.0
 );
 
 LightSource light1 = LightSource(
-    vec4(2.0, 0.0, 0.0, 1.0),
+    light1_pos,
     vec4(1.0, 1.0, 1.0, 1.0),
     vec4(1.0, 1.0, 1.0, 1.0),
     0.0, 1.0, 0.0

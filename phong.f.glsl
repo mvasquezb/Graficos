@@ -4,6 +4,8 @@ varying vec3 new_normal;
 uniform mat4 m, v, p;
 uniform mat4 v_inv;
 
+uniform vec4 light0_pos, light1_pos;
+
 struct LightSource{
     vec4 position;
     vec4 diffuse;
@@ -15,14 +17,14 @@ const int numLights = 2;
 LightSource lights[numLights];
 
 LightSource light0 = LightSource(
-    vec4(0.0, 1.0, 2.0, 1.0),
+    vec4(0.0, 0.0, 0.0, 0.0),
     vec4(1.0, 1.0, 1.0, 1.0),
     vec4(1.0, 1.0, 1.0, 1.0),
     0.0, 1.0, 0.0
 );
 
 LightSource light1 = LightSource(
-    vec4(2.0, 0.0, 0.0, 1.0),
+    vec4(0.0, 0.0, 0.0, 0.0),
     vec4(1.0, 1.0, 1.0, 1.0),
     vec4(1.0, 1.0, 1.0, 1.0),
     0.0, 1.0, 0.0
@@ -45,6 +47,8 @@ Material mymaterial = Material(
 );
 
 void main(void){
+    light0.position = light0_pos;
+    light1.position = light1_pos;
     lights[0] = light0;
     lights[1] = light1;
 
