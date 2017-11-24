@@ -54,6 +54,9 @@ public:
     return Vec3<T>(x * v.x, y * v.y, z * v.z);
   }
 
+  //[/comment]
+  // Added: Cross product method
+  //[/comment]
   Vec3<T> cross(const Vec3<T> &v) const {
     return Vec3<T>(y * v.z - z * v.y, z * v.x - x * v.z, x * v.y - y * v.x);
   }
@@ -78,7 +81,7 @@ public:
     return *this;
   }
   //[comment]
-  // Added to allow division by scalar
+  // Added: Allow division by scalar
   //[/comment]
   Vec3<T> &operator/=(const T &v) {
     x /= v, y /= v, z /= v;
@@ -132,13 +135,19 @@ public:
 
 class Vertex : public Vec3f {
 public:
-    float nx, ny, nz;
+    Vec3f normal;
     int numTA;
 };
 
-struct Face {
+class Face {
+public:
     unsigned int indices[3];
     float nx, ny, nz;
+
+    bool intersect(const Vec3f &rayorig, const Vec3f &raydir, float &t0,
+                   float &t1) const {
+      return false;
+    }
 };
 
 class Mesh {
@@ -187,10 +196,6 @@ public:
         fscanf(fid, "%f %f %f", &vertex.x, &vertex.y, &vertex.z);
 
         mesh.center += vertex;
-        vertex.nx = 0.0;
-        vertex.ny = 0.0;
-        vertex.nz = 0.0;
-        vertex.numTA = 0;
         mesh.vertices.push_back(vertex);
       }
 
@@ -235,31 +240,16 @@ public:
         Vec3f B = mesh.vertices[p2] - mesh.vertices[p0];
 
         Vec3f C = A.cross(B).normalize();
-        mesh.vertices[p0].nx += C.x;
-        mesh.vertices[p0].ny += C.y;
-        mesh.vertices[p0].nz += C.z;   mesh.vertices[p0].numTA++;
+        mesh.vertices[p0].normal += C;   mesh.vertices[p0].numTA++;
 
-        mesh.vertices[p1].nx += C.x;
-        mesh.vertices[p1].ny += C.y;
-        mesh.vertices[p1].nz += C.z;   mesh.vertices[p1].numTA++;
+        mesh.vertices[p1].normal += C;   mesh.vertices[p1].numTA++;
 
-        mesh.vertices[p2].nx += C.x;
-        mesh.vertices[p2].ny += C.y;
-        mesh.vertices[p2].nz += C.z;   mesh.vertices[p2].numTA++;
+        mesh.vertices[p2].normal += C;   mesh.vertices[p2].numTA++;
       }
 
       for(int i = 0; i < mesh.vertices.size(); i++){
-        mesh.vertices[i].nx /= mesh.vertices[i].numTA;
-        mesh.vertices[i].ny /= mesh.vertices[i].numTA;
-        mesh.vertices[i].nz /= mesh.vertices[i].numTA;
-
-        Vec3f v = Vec3f(mesh.vertices[i].nx,
-                        mesh.vertices[i].ny,
-                        mesh.vertices[i].nz);
-        v.normalize();
-        mesh.vertices[i].nx = v.x;
-        mesh.vertices[i].ny = v.y;
-        mesh.vertices[i].nz = v.z;
+        mesh.vertices[i].normal /= mesh.vertices[i].numTA;
+        mesh.vertices[i].normal.normalize();
       }
 
       float diag = sqrt((maxx-minx)*(maxx-minx) +
@@ -426,7 +416,7 @@ void render(const std::vector<Sphere> &spheres) {
 // we render that scene, by calling the render() function.
 //[/comment]
 int main(int argc, char **argv) {
-  Mesh mesh = Mesh::fromOFF("NR0.off");
+  // Mesh mesh = Mesh::fromOFF("NR0.off");
   // srand48(13);
   std::vector<Sphere> spheres;
   // position, radius, surface color, reflectivity, transparency, emission color
