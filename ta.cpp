@@ -15,6 +15,7 @@
 #include <cstdlib>
 #include <cstdio>
 #include <cmath>
+#include <cstring>
 #include <fstream>
 #include <vector>
 #include <iostream>
@@ -31,9 +32,13 @@
 template <typename T> class Vec3 {
 public:
   T x, y, z;
+
   Vec3() : x(T(0)), y(T(0)), z(T(0)) {}
+
   Vec3(T xx) : x(xx), y(xx), z(xx) {}
+
   Vec3(T xx, T yy, T zz) : x(xx), y(yy), z(zz) {}
+
   Vec3 &normalize() {
     T nor2 = length2();
     if (nor2 > 0) {
@@ -42,28 +47,50 @@ public:
     }
     return *this;
   }
+
   Vec3<T> operator*(const T &f) const { return Vec3<T>(x * f, y * f, z * f); }
+
   Vec3<T> operator*(const Vec3<T> &v) const {
     return Vec3<T>(x * v.x, y * v.y, z * v.z);
   }
+
+  Vec3<T> cross(const Vec3<T> &v) const {
+    return Vec3<T>(y * v.z - z * v.y, z * v.x - x * v.z, x * v.y - y * v.x);
+  }
+
   T dot(const Vec3<T> &v) const { return x * v.x + y * v.y + z * v.z; }
+
   Vec3<T> operator-(const Vec3<T> &v) const {
     return Vec3<T>(x - v.x, y - v.y, z - v.z);
   }
+
   Vec3<T> operator+(const Vec3<T> &v) const {
     return Vec3<T>(x + v.x, y + v.y, z + v.z);
   }
+
   Vec3<T> &operator+=(const Vec3<T> &v) {
     x += v.x, y += v.y, z += v.z;
     return *this;
   }
+
   Vec3<T> &operator*=(const Vec3<T> &v) {
     x *= v.x, y *= v.y, z *= v.z;
     return *this;
   }
+  //[comment]
+  // Added to allow division by scalar
+  //[/comment]
+  Vec3<T> &operator/=(const T &v) {
+    x /= v, y /= v, z /= v;
+    return *this;
+  }
+
   Vec3<T> operator-() const { return Vec3<T>(-x, -y, -z); }
+
   T length2() const { return x * x + y * y + z * z; }
+
   T length() const { return sqrt(length2()); }
+
   friend std::ostream &operator<<(std::ostream &os, const Vec3<T> &v) {
     os << "[" << v.x << " " << v.y << " " << v.z << "]";
     return os;
@@ -101,6 +128,147 @@ public:
 
     return true;
   }
+};
+
+class Vertex : public Vec3f {
+public:
+    float nx, ny, nz;
+    int numTA;
+};
+
+struct Face {
+    unsigned int indices[3];
+    float nx, ny, nz;
+};
+
+class Mesh {
+public:
+    //Informacion de estructura
+    std::vector<Vertex> vertices;
+    std::vector<Face> faces;
+
+    //Información para transformación inicial
+    Vertex center;
+    float scale;
+
+    //Matriz de transformación
+    // glm::mat4 model_transform;
+
+    // //Buffers para graficado
+    // GLfloat* object_vertices;
+    // GLfloat* object_normal;
+    // GLushort* object_indexes;
+
+    // //Id's para buffers
+    // GLuint vbo_object;
+    // GLuint vbo_normal;
+    // GLuint ibo_object;
+
+    static Mesh fromOFF(const char *filename) {
+      FILE* fid = fopen(filename, "rt");
+
+      //Leer formato
+      char buffer[1024];
+      fscanf(fid, "%s", buffer);
+
+      if(strcmp(buffer, "OFF")!=0){
+        printf("Error de formato\n");
+        exit(EXIT_FAILURE);
+      }
+
+      int nverts, ntriang, nedges;
+      fscanf(fid, "%d %d %d", &nverts, &ntriang, &nedges);
+      printf("%d, %d, %d\n", nverts, ntriang, nedges);
+
+      Mesh mesh;
+
+      for(int i = 0; i < nverts; i++){
+        Vertex vertex;
+        fscanf(fid, "%f %f %f", &vertex.x, &vertex.y, &vertex.z);
+
+        mesh.center += vertex;
+        vertex.nx = 0.0;
+        vertex.ny = 0.0;
+        vertex.nz = 0.0;
+        vertex.numTA = 0;
+        mesh.vertices.push_back(vertex);
+      }
+
+      for(int i = 0; i < ntriang; i++) {
+        Face face;
+        int nv;
+        fscanf(fid, "%d %d %d %d", &nv, &face.indices[0],
+                                        &face.indices[1],
+                                        &face.indices[2]);
+        mesh.faces.push_back(face);
+      }
+
+      fclose(fid);
+      mesh.center /= nverts;
+
+      float maxx = -1.0e-10, maxy= -1.0e-10, maxz= -1.0e-10;
+      float minx = 1.0e10, miny= 1.0e10, minz= 1.0e10;
+
+      for(int i = 0; i < mesh.vertices.size(); i++){
+        if(mesh.vertices[i].x < minx)
+          minx = mesh.vertices[i].x;
+        if(mesh.vertices[i].x > maxx)
+          maxx = mesh.vertices[i].x;
+        if(mesh.vertices[i].y < miny)
+          miny = mesh.vertices[i].y;
+        if(mesh.vertices[i].y > maxy)
+          maxy = mesh.vertices[i].y;
+        if(mesh.vertices[i].z < minz)
+          minz = mesh.vertices[i].z;
+        if(mesh.vertices[i].z > maxz)
+          maxz = mesh.vertices[i].z;
+      }
+
+      unsigned int p0, p1, p2;
+      //Computar normales de los triángulos
+      for(int i = 0; i < mesh.faces.size(); i++){
+        p0 = mesh.faces[i].indices[0];
+        p1 = mesh.faces[i].indices[1];
+        p2 = mesh.faces[i].indices[2];
+
+        Vec3f A = mesh.vertices[p1] - mesh.vertices[p0];
+        Vec3f B = mesh.vertices[p2] - mesh.vertices[p0];
+
+        Vec3f C = A.cross(B).normalize();
+        mesh.vertices[p0].nx += C.x;
+        mesh.vertices[p0].ny += C.y;
+        mesh.vertices[p0].nz += C.z;   mesh.vertices[p0].numTA++;
+
+        mesh.vertices[p1].nx += C.x;
+        mesh.vertices[p1].ny += C.y;
+        mesh.vertices[p1].nz += C.z;   mesh.vertices[p1].numTA++;
+
+        mesh.vertices[p2].nx += C.x;
+        mesh.vertices[p2].ny += C.y;
+        mesh.vertices[p2].nz += C.z;   mesh.vertices[p2].numTA++;
+      }
+
+      for(int i = 0; i < mesh.vertices.size(); i++){
+        mesh.vertices[i].nx /= mesh.vertices[i].numTA;
+        mesh.vertices[i].ny /= mesh.vertices[i].numTA;
+        mesh.vertices[i].nz /= mesh.vertices[i].numTA;
+
+        Vec3f v = Vec3f(mesh.vertices[i].nx,
+                        mesh.vertices[i].ny,
+                        mesh.vertices[i].nz);
+        v.normalize();
+        mesh.vertices[i].nx = v.x;
+        mesh.vertices[i].ny = v.y;
+        mesh.vertices[i].nz = v.z;
+      }
+
+      float diag = sqrt((maxx-minx)*(maxx-minx) +
+                        (maxy-miny)*(maxy-miny)+
+                        (maxz-minz)*(maxz-minz));
+      mesh.scale = 2.0/diag;
+
+      return mesh;
+    }
 };
 
 //[comment]
@@ -147,8 +315,8 @@ Vec3f trace(const Vec3f &rayorig, const Vec3f &raydir,
   // if there's no intersection return black or background color
   if (!sphere)
     return Vec3f(2);
-  Vec3f surfaceColor =
-      0; // color of the ray/surfaceof the object intersected by the ray
+  // color of the ray/surfaceof the object intersected by the ray
+  Vec3f surfaceColor = 0;
   Vec3f phit = rayorig + raydir * tnear; // point of intersection
   Vec3f nhit = phit - sphere->center;    // normal at the intersection point
   nhit.normalize();                      // normalize normal direction
@@ -258,6 +426,7 @@ void render(const std::vector<Sphere> &spheres) {
 // we render that scene, by calling the render() function.
 //[/comment]
 int main(int argc, char **argv) {
+  Mesh mesh = Mesh::fromOFF("NR0.off");
   // srand48(13);
   std::vector<Sphere> spheres;
   // position, radius, surface color, reflectivity, transparency, emission color
