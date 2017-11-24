@@ -1,56 +1,25 @@
-#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <iostream>
-#include <fstream>
+#include <math.h>
+#include <cstdlib>
 #include <vector>
-#include <string>
-#include <sstream>
-#include <algorithm>
+#include <cstdio>
+#include <iostream>
 
 #include <GL/glew.h>
 
 #include <GL/freeglut.h>
 
 #define GLM_FORCE_RADIANS
-#include "shader_utils.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include "shader_utils.h"
+#include "SOIL.h"
 
-#include <SOIL.h>
+#include "res_texture.c"
 
-// #include "res_texture.c"
-
-struct TextureVertix {
-  ushort vertix_index;
-  ushort texture_index;
-  int normal_index;
-
-  friend std::istream& operator >> (std::istream& input, TextureVertix& vertix) {
-    ushort vertix_index, texture_index, normal_index;
-    if (input >> vertix_index >> texture_index >> normal_index) {
-      // std::cout << vertix_index << " " << texture_index << " " << normal_index << std::endl;
-      vertix.vertix_index = vertix_index;
-      vertix.texture_index = texture_index;
-      vertix.normal_index = normal_index;
-    }
-    return input;
-  }
-};
-
-struct Side {
-  std::vector<TextureVertix> texture_vertices;
-};
-
-struct OBJ {
-  std::vector<GLfloat> vertices;
-  std::vector<GLfloat> normal_vectors;
-  std::vector<GLfloat> texture_coords;
-  std::vector<Side> sides;
-};
-
-int screen_width = 800, screen_height = 600;
+int screen_width=800, screen_height=600;
 GLuint vbo_cube_vertices;
 GLuint ibo_cube_elements;
 GLuint program;
@@ -64,268 +33,174 @@ GLint attribute_texcoord;
 GLuint texture_id;
 GLint uniform_texture;
 
-OBJ obj_res;
+unsigned char* imag;
 
-/**
- * Functions to transform sides with more than 3 vertices to triangles
- */
+std::vector<float> 
+      vertices_coords, // coordenadas de vertices para asignar a los puntos del objeto
+      vertices, // coordenadas de vertices de tríangulos agrupadas cada 3
+      uv_coord_vertices, // coordenadas uv para asignar luego a cada punto
+      uv_coords; // coordenadas uv para cada punto de 'vertices'
+std::vector<GLushort> indices_triangulos; // indices de cada coordenada uv para cada punto
 
-std::vector<Side> transform_side_to_triangles(const Side& side) {
-  // Additional check, just in case
-  if (side.texture_vertices.size() == 3) {
-    return std::vector<Side>{ side };
-  }
-  std::vector<Side> new_sides;
-  // Copy vertices to new variable
-  auto vertices = side.texture_vertices;
+void read_file(const char* filename){
+    FILE* fp = fopen(filename, "rt");
+    char buffer[100];
 
-  int num_triangles = vertices.size() / 3;
-  int missing_vertices;
-  if ((vertices.size() % 3) == 0) {
-     missing_vertices = 0;
-  } else {
-    missing_vertices = 3 - (vertices.size() % 3);
-  }
+    
+    
+    // para pode usar los indices directamente
+    // vertices.push_back(0.0);
+    // vertices.push_back(0.0);
+    // vertices.push_back(0.0);
+    // uv_coords.push_back(0);
+    // uv_coords.push_back(0);
+    
+    float x, y, z;
+    
+    fscanf(fp, "%s", buffer);
+    while (strcmp(buffer, "v") == 0) {
+      fscanf(fp, "%f %f %f", &x, &y, &z);
+      vertices_coords.push_back(x);
+      vertices_coords.push_back(y);
+      vertices_coords.push_back(z);
+      fscanf(fp, "%s", buffer);
+    }
 
-  std::vector<TextureVertix> new_vertices;
-  for (int i = 0; i < num_triangles; i++) {
-    new_vertices.push_back(vertices[0]);
-    new_vertices.push_back(vertices[i + 1]);
-    new_vertices.push_back(vertices[i + 2]);
-    // for (int j = 0; j < missing_vertices - 1; j++) {
-    //   new_vertices.push_back(vertices[i * 2 + j]);
-    // }
-  }
-  for (int i = missing_vertices; i > 0; i--) {
-    new_vertices.push_back(vertices[vertices.size() - i]);
-  }
-  vertices.insert(vertices.end(), new_vertices.begin(), new_vertices.end());
+    while (strcmp(buffer, "vn") == 0) {
+      fscanf(fp, "%f %f %f", &x, &y, &z);
+      fscanf(fp, "%s", buffer);
+    }
 
-  // Make sides grabbing groups of 3 vertices from `vertices`
-  for (auto it = vertices.begin(); it != vertices.end(); it += 3) {
-    Side side;
-    side.texture_vertices.push_back(*it);
-    side.texture_vertices.push_back(*(it + 1));
-    side.texture_vertices.push_back(*(it + 2));
-    new_sides.push_back(side);
-  }
-  return new_sides;
+    while (strcmp(buffer, "vt") == 0) {
+      fscanf(fp, "%f %f %f", &x, &y, &z);
+      uv_coord_vertices.push_back(x);
+      uv_coord_vertices.push_back(y);
+      fscanf(fp, "%s", buffer);
+    }
+
+
+    int i_vertice, i_textura, i_normal;
+    while (strcmp(buffer, "g") == 0 || strcmp(buffer, "s") == 0 || strcmp(buffer, "f") == 0) {
+      if (strcmp(buffer, "g") == 0 || strcmp(buffer, "s") == 0) {
+        fscanf(fp, "%s", buffer);
+        fscanf(fp, "%s", buffer);
+      } else {
+        // leer datos de cada vertice
+        std::vector<GLushort> indices;
+
+        fscanf(fp, "%s", buffer);
+        i_vertice = atoi(buffer);
+        // si todavía hay datos de vertices
+        while (i_vertice) {
+          fscanf(fp, "%d %d", &i_textura, &i_normal);
+
+          indices.push_back(i_vertice - 1);
+          indices.push_back(i_textura - 1);
+
+          if (fscanf(fp, "%s", buffer) == -1) {
+            buffer[0] = 0;
+          }
+
+          i_vertice = atoi(buffer);
+        }
+
+        int n_vertices = indices.size() / 2;
+
+        int i1 = vertices.size() / 3;
+        GLushort i2 = i1 + 1 , i3 = i1 + 2 , i4 = i1 + 3 ;
+
+        // por cada vertice de la cara
+        for (int i = 0; i < n_vertices; i++) {
+          // ingresar coordenadas de este vertice
+          vertices.push_back(vertices_coords[indices[i * 2] * 3]); // x
+          vertices.push_back(vertices_coords[indices[i * 2] * 3 + 1]); // y
+          vertices.push_back(vertices_coords[indices[i * 2] * 3 + 2]); // z
+
+          // ingresar coordenadas uv de este vertice
+          uv_coords.push_back(uv_coord_vertices[indices[i * 2 + 1] * 2]);
+          uv_coords.push_back(uv_coord_vertices[indices[i * 2 + 1] * 2 + 1]);
+
+          if (i > 1) {
+            //std::cout << "********************" << n_vertices << std::endl;;
+          }
+        }
+
+        indices_triangulos.push_back(i1);
+        indices_triangulos.push_back(i2);
+        indices_triangulos.push_back(i3);
+
+        if (n_vertices == 4) {
+          indices_triangulos.push_back(i1);
+          indices_triangulos.push_back(i3);
+          indices_triangulos.push_back(i4);
+        }
+      }
+    }
+
+    fclose(fp);
 }
 
-void transform_sides_to_triangles(OBJ *obj_res) {
-  std::vector<Side> new_sides;
-  for (auto& side : obj_res->sides) {
-    if (side.texture_vertices.size() == 3) {
-      new_sides.push_back(side);
-    } else {
-      auto aux_sides = transform_side_to_triangles(side);
-      new_sides.insert(new_sides.end(), aux_sides.begin(), aux_sides.end());
+void loadCube() {
+  read_file("House_3_AO.obj");
+
+  GLfloat* cube_vertices = new GLfloat[vertices.size()];
+  for (long i = 0; i < vertices.size(); i++) {
+    cube_vertices[i] = vertices[i];
+    if (i < 15) {
+      std::cout << cube_vertices[i] << std::endl;
     }
   }
-  obj_res->sides = std::move(new_sides);
-  for (auto& side : obj_res->sides) {
-    for (auto& vertix : side.texture_vertices) {
-      std::cout << vertix.vertix_index << " ";
-    }
-    std::cout << std::endl;
-  }
-}
-
-/**
- * OBJ format reading util functions
- */
-bool read_vertix(std::ifstream& input, OBJ *obj_res) {
-  float x, y, z;
-    input >> x >> y >> z;
-    if (!input) {
-      std::cerr << "Error reading vertices" << std::endl;
-      return false;
-    }
-    obj_res->vertices.push_back(x);
-    obj_res->vertices.push_back(y);
-    obj_res->vertices.push_back(z);
-    return true;
-}
-
-bool read_normal_vector(std::ifstream& input, OBJ *obj_res) {
-  float x, y, z;
-    input >> x >> y >> z;
-    if (!input) {
-      std::cerr << "Error reading normal vectors" << std::endl;
-      return false;
-    }
-    obj_res->normal_vectors.push_back(x);
-    obj_res->normal_vectors.push_back(y);
-    obj_res->normal_vectors.push_back(z);
-    return true;
-}
-
-bool read_texture_coordinates(std::ifstream& input, OBJ *obj_res) {
-  float u, v, rest;
-  input >> u >> v >> rest;
-  if (!input) {
-    std::cerr << "Error reading texture coordinates" << std::endl;
-    return false;
-  }
-  obj_res->texture_coords.push_back(u);
-  obj_res->texture_coords.push_back(v);
-  return true;
-}
-
-bool read_side(std::ifstream& input, OBJ *obj_res) {
-  Side side;
-  std::string line;
-  if (getline(input, line)) {
-    std::istringstream line_input(line);
-    TextureVertix vertix;
-    while (line_input >> vertix) {
-      side.texture_vertices.push_back(vertix);
-    }
-  }
-  obj_res->sides.push_back(side);
-  if (!input) {
-    std::cerr << "Error reading sides" << std::endl;
-    return false;
-  }
-  return true;
-}
-
-/**
- * Entry point to read OBJ file
- */
-bool read_obj_file(const char *filename, OBJ *obj_res) {
-  if (!filename) {
-    std::cerr << "Must provide OBJ filename" << std::endl;
-    return false;
-  }
-
-  if (!obj_res) {
-    std::cerr << "Must provide valid OBJ resource" << std::endl;
-    return false;
-  }
-
-  std::ifstream input(filename);
-  std::string line_type;
-  while (input >> line_type && line_type == "v") {
-    if (!read_vertix(input, obj_res)) {
-      return false;
-    }
-  }
-  std::cout << "Vertices: " << obj_res->vertices.size() << std::endl;
-
-  // line_type has next value, which should be "vn"
-  if (line_type == "vn") {
-    if (!read_normal_vector(input, obj_res)) {
-      return false;
-    }
-  }
-
-  while (input >> line_type && line_type == "vn") {
-    if (!read_normal_vector(input, obj_res)) {
-      return false;
-    }
-  }
-  std::cout << "Normal vectors: " << obj_res->normal_vectors.size() << std::endl;
-
-  if (line_type == "vt") {
-    if (!read_texture_coordinates(input, obj_res)) {
-      return false;
-    }
-  }
-  while (input >> line_type && line_type == "vt") {
-    if (!read_texture_coordinates(input, obj_res)) {
-      return false;
-    }
-  }
-  std::cout << "Texture coordinates: " << obj_res->texture_coords.size() << std::endl;
-
-  if (line_type == "g" || line_type == "s") {
-    input.ignore(1000, '\n');
-  }
-
-  while (input >> line_type && (line_type == "g" || line_type == "s" || line_type == "f")) {
-    if (line_type == "g" || line_type == "s") {
-      input.ignore(1000, '\n');
-      continue;
-    }
-    // line_type == "f"
-    if (!read_side(input, obj_res)) {
-      return false;
-    }
-  }
-  transform_sides_to_triangles(obj_res);
-  std::cout << "Sides: " << obj_res->sides.size() << std::endl;
-
-  return true;
-}
-
-int init_resources()
-{
-  if (!read_obj_file("House_3_AO.obj", &obj_res)) {
-    std::cerr << "Error reading OBJ file" << std::endl;
-    return false;
-  }
-  std::cout << "Read file correctly" << std::endl;
 
   glGenBuffers(1, &vbo_cube_vertices);
   glBindBuffer(GL_ARRAY_BUFFER, vbo_cube_vertices);
-  glBufferData(
-    GL_ARRAY_BUFFER,
-    obj_res.vertices.size() * sizeof(float),
-    &obj_res.vertices[0],
-    GL_STATIC_DRAW
-  );
+  glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * vertices.size(), cube_vertices, GL_STATIC_DRAW);
+
+  GLfloat* cube_texcoords = new GLfloat[uv_coords.size()];
+  for (long i = 0; i < uv_coords.size(); i++) {
+    cube_texcoords[i] = uv_coords[i];
+  }
 
   glGenBuffers(1, &vbo_cube_texcoords);
   glBindBuffer(GL_ARRAY_BUFFER, vbo_cube_texcoords);
-  glBufferData(
-    GL_ARRAY_BUFFER,
-    obj_res.texture_coords.size() * sizeof(float),
-    &obj_res.texture_coords[0],
-    GL_STATIC_DRAW
-  );
+  glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * uv_coords.size(),
+               cube_texcoords, GL_STATIC_DRAW);
 
-  std::vector<GLushort> cube_elements;
-  for (auto& side : obj_res.sides) {
-    for (auto& vertix : side.texture_vertices) {
-      cube_elements.push_back(vertix.vertix_index);
-    }
+  GLushort* cube_elements = new GLushort[indices_triangulos.size()];
+  for (long i = 0; i < indices_triangulos.size(); i++) {
+    cube_elements[i] = indices_triangulos[i];
   }
 
   glGenBuffers(1, &ibo_cube_elements);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo_cube_elements);
-  glBufferData(
-    GL_ELEMENT_ARRAY_BUFFER,
-    cube_elements.size() * sizeof(GLushort),
-    &cube_elements[0],
-    GL_STATIC_DRAW
-  );
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLushort) * indices_triangulos.size(), cube_elements, GL_STATIC_DRAW);
+
+
+
 
   glGenTextures(1, &texture_id);
   glBindTexture(GL_TEXTURE_2D, texture_id);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
+                  GL_LINEAR);
 
-  int width, height, channels;
-  unsigned char *pixel_data = SOIL_load_image(
-    "House_3_AO.png",
-    &width,
-    &height,
-    &channels,
-    SOIL_LOAD_L
-  );
+  int width, height, channel;
+  imag = SOIL_load_image("House_3_AO.png", &width, &height, &channel, SOIL_LOAD_AUTO);
 
-  glTexImage2D(
-    GL_TEXTURE_2D,
-    0,
-    GL_RGB,
-    width,
-    height,
-    0,
-    GL_RGB,
-    GL_UNSIGNED_BYTE,
-    pixel_data
-  );
+  glTexImage2D(GL_TEXTURE_2D,
+               0,
+               GL_RGB,
+               width,
+               height,
+               0,
+               GL_RGB,
+               GL_UNSIGNED_BYTE,
+               imag);
+}
 
+
+
+int init_resources()
+{
+  loadCube();
 
   GLint link_ok = GL_FALSE;
 
@@ -385,8 +260,8 @@ void onIdle() {
     glm::rotate(glm::mat4(1.0f), angle*4.0f, glm::vec3(0, 0, 1));   // Z axis
 
   glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0, 0.0, -4.0));
-  glm::mat4 view = glm::lookAt(glm::vec3(0.0, 2.0, 0.0), glm::vec3(0.0, 0.0, -4.0), glm::vec3(0.0, 1.0, 0.0));
-  glm::mat4 projection = glm::perspective(45.0f, 1.0f*screen_width/screen_height, 0.1f, 10.0f);
+  glm::mat4 view = glm::lookAt(glm::vec3(0.0, 15.0, 0.0), glm::vec3(0.0, 0.0, -4.0), glm::vec3(0.0, 1.0, 0.0));
+  glm::mat4 projection = glm::perspective(45.0f, 1.0f*screen_width/screen_height, 0.1f, 100.0f);
 
   glm::mat4 mvp = projection * view * model * anim;
   glUseProgram(program);
@@ -444,15 +319,6 @@ void onReshape(int width, int height) {
   glViewport(0, 0, screen_width, screen_height);
 }
 
-void onKeyPress(unsigned char key, int x, int y) {
-    switch (key) {
-        case 27: {
-            glutLeaveMainLoop();
-            break;
-        }
-    }
-}
-
 void free_resources()
 {
   glDeleteProgram(program);
@@ -460,6 +326,7 @@ void free_resources()
   glDeleteBuffers(1, &ibo_cube_elements);
   glDeleteBuffers(1, &vbo_cube_texcoords);
   glDeleteTextures(1, &texture_id);
+  SOIL_free_image_data(imag);
 }
 
 
@@ -482,7 +349,6 @@ int main(int argc, char* argv[]) {
   }
 
   if (init_resources()) {
-    glutKeyboardFunc(onKeyPress);
     glutDisplayFunc(onDisplay);
     glutReshapeFunc(onReshape);
     glutIdleFunc(onIdle);
