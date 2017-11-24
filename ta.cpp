@@ -139,15 +139,74 @@ public:
     int numTA;
 };
 
+class Triangle {
+public:
+  std::array<Vec3f, 3> vertices;
+
+  Triangle(): vertices() {}
+  Triangle(Vec3f p0, Vec3f p1, Vec3f p2) : vertices{p0, p1, p2} {}
+
+  //[comment]
+  // Compute ray-triangle intersection
+  //[/comment]
+  bool intersect(const Vec3f &rayorig, const Vec3f &raydir, float& t) const {
+    float area2 = normal.length();
+
+    //[comment]
+    // Find point of intersection with plane
+    //[/comment]
+
+    //[comment]
+    // Check if ray and plane are parallel
+    //[/comment]
+    float nDotRay = normal.dot(raydir);
+    if (nDotRay == 0.0) { // Use epsilon
+      return false;
+    }
+
+    float d = normal.dot(vertices[0]);
+    t = (normal.dot(rayorig) + d) / nDotRay;
+    if (t < 0) {
+      return false;
+    }
+
+    Vec3f P = orig + t * dir;
+
+    // Inside-outside test
+    Vec3f C;
+
+    // Edge 0
+    auto edge0 = vertices[1] - vertices[0];
+    auto vp0 = P - vertices[0];
+    C = edge0.cross(vp0);
+    if (normal.dot(C) < 0) {
+      return false;
+    }
+
+    // Edge 1
+    auto edge1 = vertices[2] - vertices[1];
+    auto vp1 = P - vertices[1];
+    C = edge1.cross(vp1);
+    if (normal.dot(C) < 0) {
+      return false;
+    }
+
+    // Edge 2
+    auto edge2 = vertices[0] - vertices[2];
+    auto vp2 = P - vertices[2];
+    C = edge2.cross(vp2);
+    if (normal.dot(C) < 0) {
+      return false;
+    }
+
+    return true;
+  }
+}
+
 class Face {
 public:
     unsigned int indices[3];
-    float nx, ny, nz;
-
-    bool intersect(const Vec3f &rayorig, const Vec3f &raydir, float &t0,
-                   float &t1) const {
-      return false;
-    }
+    Vec3f normal;
 };
 
 class Mesh {
@@ -172,6 +231,23 @@ public:
     // GLuint vbo_object;
     // GLuint vbo_normal;
     // GLuint ibo_object;
+
+    bool intersect(const Vec3f &rayorig, const Vec3f &raydir, float &t0,
+                   float &t1) const {
+      unsigned triIndex;
+      bool intersects = false;
+      for (int i = 0; i < faces.size(); i++) {
+        const auto& face = faces[i];
+        Triangle triangle(face.indices[0], face.indices[1], face.indices[2]);
+        float tFront = INFINITY, tBack;
+        if (triangle.intersect(rayorig, raydir, tFront) && tFront < t0) {
+          t0 = tFront;
+          triIndex = i;
+          intersects |= true;
+        }
+      }
+      return intersects;
+    }
 
     static Mesh fromOFF(const char *filename) {
       FILE* fid = fopen(filename, "rt");
@@ -239,11 +315,12 @@ public:
         Vec3f A = mesh.vertices[p1] - mesh.vertices[p0];
         Vec3f B = mesh.vertices[p2] - mesh.vertices[p0];
 
-        Vec3f C = A.cross(B).normalize();
+        Vec3f C = A.cross(B);
+        mesh.faces[i].normal = C;
+
+        C.normalize();
         mesh.vertices[p0].normal += C;   mesh.vertices[p0].numTA++;
-
         mesh.vertices[p1].normal += C;   mesh.vertices[p1].numTA++;
-
         mesh.vertices[p2].normal += C;   mesh.vertices[p2].numTA++;
       }
 
