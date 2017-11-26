@@ -18,6 +18,7 @@
 #include <cstring>
 #include <fstream>
 #include <vector>
+#include <array>
 #include <iostream>
 #include <cassert>
 
@@ -49,6 +50,9 @@ public:
   }
 
   Vec3<T> operator*(const T &f) const { return Vec3<T>(x * f, y * f, z * f); }
+  friend Vec3<T> operator*(const T &f, const Vec3<T> &v) {
+    return v * f;
+  }
 
   Vec3<T> operator*(const Vec3<T> &v) const {
     return Vec3<T>(x * v.x, y * v.y, z * v.z);
@@ -83,6 +87,9 @@ public:
   //[comment]
   // Added: Allow division by scalar
   //[/comment]
+  Vec3<T> operator/(const T &v) const {
+    return Vec3<T>(x / v, y / v, z / v);
+  }
   Vec3<T> &operator/=(const T &v) {
     x /= v, y /= v, z /= v;
     return *this;
@@ -102,23 +109,35 @@ public:
 
 typedef Vec3<float> Vec3f;
 
-class Sphere {
+class Drawable {
 public:
-  Vec3f center;                      /// position of the sphere
-  float radius, radius2;             /// sphere radius and radius^2
+  Vec3f _center;                      /// position of the sphere
   Vec3f surfaceColor, emissionColor; /// surface color and emission (light)
   float transparency, reflection;    /// surface transparency and reflectivity
-  Sphere(const Vec3f &c, const float &r, const Vec3f &sc, const float &refl = 0,
+
+  Drawable(const Vec3f c = 0, const Vec3f &sc = 0, const float &refl = 0,
+           const float &transp = 0, const Vec3f &ec = 0)
+        : surfaceColor(sc), _center(c),
+          emissionColor(ec), transparency(transp), reflection(refl) {}
+
+  Vec3f center() const {
+    return _center;
+  }
+};
+
+class Sphere : public Drawable {
+public:
+  float radius, radius2;             /// sphere radius and radius^2
+  Sphere(const Vec3f &c, const float &r, const Vec3f &sc = 0, const float &refl = 0,
          const float &transp = 0, const Vec3f &ec = 0)
-      : center(c), radius(r), radius2(r * r), surfaceColor(sc),
-        emissionColor(ec), transparency(transp), reflection(refl) { /* empty */
+      : Drawable(c, sc, transp, refl, ec), radius(r), radius2(r * r) { /* empty */
   }
   //[comment]
   // Compute a ray-sphere intersection using the geometric solution
   //[/comment]
   bool intersect(const Vec3f &rayorig, const Vec3f &raydir, float &t0,
                  float &t1) const {
-    Vec3f l = center - rayorig;
+    Vec3f l = center() - rayorig;
     float tca = l.dot(raydir);
     if (tca < 0)
       return false;
@@ -139,12 +158,15 @@ public:
     int numTA;
 };
 
-class Triangle {
+class Triangle : public Drawable {
 public:
   std::array<Vec3f, 3> vertices;
+  Vec3f normal;
 
-  Triangle(): vertices() {}
-  Triangle(Vec3f p0, Vec3f p1, Vec3f p2) : vertices{p0, p1, p2} {}
+  Triangle() : Drawable() {}
+  Triangle(Vec3f p0, Vec3f p1, Vec3f p2, const Vec3f &sc = 0, const float &refl = 0,
+           const float &transp = 0, const Vec3f &ec = 0)
+        : vertices{p0, p1, p2}, Drawable((p0 + p1 + p2) / 3, sc, refl, transp, ec) {}
 
   //[comment]
   // Compute ray-triangle intersection
@@ -170,7 +192,7 @@ public:
       return false;
     }
 
-    Vec3f P = orig + t * dir;
+    Vec3f P = rayorig + t * raydir;
 
     // Inside-outside test
     Vec3f C;
@@ -201,7 +223,7 @@ public:
 
     return true;
   }
-}
+};
 
 class Face {
 public:
@@ -385,7 +407,7 @@ Vec3f trace(const Vec3f &rayorig, const Vec3f &raydir,
   // color of the ray/surfaceof the object intersected by the ray
   Vec3f surfaceColor = 0;
   Vec3f phit = rayorig + raydir * tnear; // point of intersection
-  Vec3f nhit = phit - sphere->center;    // normal at the intersection point
+  Vec3f nhit = phit - sphere->center();    // normal at the intersection point
   nhit.normalize();                      // normalize normal direction
   // If the normal and the view direction are not opposite to each other
   // reverse the normal direction. That also means we are inside the sphere so
@@ -429,7 +451,7 @@ Vec3f trace(const Vec3f &rayorig, const Vec3f &raydir,
       if (spheres[i].emissionColor.x > 0) {
         // this is a light
         Vec3f transmission = 1;
-        Vec3f lightDirection = spheres[i].center - phit;
+        Vec3f lightDirection = spheres[i].center() - phit;
         lightDirection.normalize();
         for (unsigned j = 0; j < spheres.size(); ++j) {
           if (i != j) {
