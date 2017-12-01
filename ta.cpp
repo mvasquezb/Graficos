@@ -90,6 +90,7 @@ public:
   Vec3<T> operator/(const T &v) const {
     return Vec3<T>(x / v, y / v, z / v);
   }
+
   Vec3<T> &operator/=(const T &v) {
     x /= v, y /= v, z /= v;
     return *this;
@@ -130,7 +131,7 @@ public:
   float radius, radius2;             /// sphere radius and radius^2
   Sphere(const Vec3f &c, const float &r, const Vec3f &sc = 0, const float &refl = 0,
          const float &transp = 0, const Vec3f &ec = 0)
-      : Drawable(c, sc, transp, refl, ec), radius(r), radius2(r * r) { /* empty */
+      : Drawable(c, sc, refl, transp, ec), radius(r), radius2(r * r) { /* empty */
   }
   //[comment]
   // Compute a ray-sphere intersection using the geometric solution
