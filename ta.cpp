@@ -232,7 +232,7 @@ public:
     Vec3f normal;
 };
 
-class Mesh {
+class TriangleMesh {
 public:
     //Informacion de estructura
     std::vector<Vertex> vertices;
@@ -272,7 +272,7 @@ public:
       return intersects;
     }
 
-    static Mesh fromOFF(const char *filename) {
+    static TriangleMesh fromOFF(const char *filename) {
       FILE* fid = fopen(filename, "rt");
 
       //Leer formato
@@ -288,7 +288,7 @@ public:
       fscanf(fid, "%d %d %d", &nverts, &ntriang, &nedges);
       printf("%d, %d, %d\n", nverts, ntriang, nedges);
 
-      Mesh mesh;
+      TriangleMesh mesh;
 
       for(int i = 0; i < nverts; i++){
         Vertex vertex;
@@ -516,7 +516,7 @@ void render(const std::vector<Sphere> &spheres) {
 // we render that scene, by calling the render() function.
 //[/comment]
 int main(int argc, char **argv) {
-  // Mesh mesh = Mesh::fromOFF("NR0.off");
+  // TriangleMesh mesh = TriangleMesh::fromOFF("NR0.off");
   // srand48(13);
   std::vector<Sphere> spheres;
   // position, radius, surface color, reflectivity, transparency, emission color
