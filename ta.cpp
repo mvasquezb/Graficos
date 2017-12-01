@@ -124,6 +124,11 @@ public:
   Vec3f center() const {
     return _center;
   }
+
+  virtual bool intersect(const Vec3f &rayorig, const Vec3f &raydir, float &t0,
+                 float &t1) const {
+    return true;
+  }
 };
 
 class Sphere : public Drawable {
@@ -232,133 +237,137 @@ public:
     Vec3f normal;
 };
 
-class TriangleMesh {
+class TriangleMesh: public Drawable {
 public:
-    //Informacion de estructura
-    std::vector<Vertex> vertices;
-    std::vector<Face> faces;
+  //Informacion de estructura
+  std::vector<Vertex> vertices;
+  std::vector<Face> faces;
 
-    //Información para transformación inicial
-    Vertex center;
-    float scale;
+  //Información para transformación inicial
+  Vertex center;
+  float scale;
 
-    //Matriz de transformación
-    // glm::mat4 model_transform;
+  //Matriz de transformación
+  // glm::mat4 model_transform;
 
-    // //Buffers para graficado
-    // GLfloat* object_vertices;
-    // GLfloat* object_normal;
-    // GLushort* object_indexes;
+  // //Buffers para graficado
+  // GLfloat* object_vertices;
+  // GLfloat* object_normal;
+  // GLushort* object_indexes;
 
-    // //Id's para buffers
-    // GLuint vbo_object;
-    // GLuint vbo_normal;
-    // GLuint ibo_object;
+  // //Id's para buffers
+  // GLuint vbo_object;
+  // GLuint vbo_normal;
+  // GLuint ibo_object;
 
-    bool intersect(const Vec3f &rayorig, const Vec3f &raydir, float &t0,
-                   float &t1) const {
-      unsigned triIndex;
-      bool intersects = false;
-      for (int i = 0; i < faces.size(); i++) {
-        const auto& face = faces[i];
-        Triangle triangle(face.indices[0], face.indices[1], face.indices[2]);
-        float tFront = INFINITY, tBack;
-        if (triangle.intersect(rayorig, raydir, tFront) && tFront < t0) {
-          t0 = tFront;
-          triIndex = i;
-          intersects |= true;
-        }
+  TriangleMesh(const Vec3f &sc = 0, const float &refl = 0,
+               const float &transp = 0, const Vec3f &ec = 0)
+    : Drawable(0, sc, refl, transp, ec) {}
+
+  bool intersect(const Vec3f &rayorig, const Vec3f &raydir, float &t0,
+                 float &t1) const {
+    unsigned triIndex;
+    bool intersects = false;
+    for (int i = 0; i < faces.size(); i++) {
+      const auto& face = faces[i];
+      Triangle triangle(face.indices[0], face.indices[1], face.indices[2]);
+      float tFront = INFINITY, tBack;
+      if (triangle.intersect(rayorig, raydir, tFront) && tFront < t0) {
+        t0 = tFront;
+        triIndex = i;
+        intersects |= true;
       }
-      return intersects;
+    }
+    return intersects;
+  }
+
+  static TriangleMesh fromOFF(const char *filename) {
+    FILE* fid = fopen(filename, "rt");
+
+    //Leer formato
+    char buffer[1024];
+    fscanf(fid, "%s", buffer);
+
+    if(strcmp(buffer, "OFF")!=0){
+      printf("Error de formato\n");
+      exit(EXIT_FAILURE);
     }
 
-    static TriangleMesh fromOFF(const char *filename) {
-      FILE* fid = fopen(filename, "rt");
+    int nverts, ntriang, nedges;
+    fscanf(fid, "%d %d %d", &nverts, &ntriang, &nedges);
+    printf("%d, %d, %d\n", nverts, ntriang, nedges);
 
-      //Leer formato
-      char buffer[1024];
-      fscanf(fid, "%s", buffer);
+    TriangleMesh mesh;
 
-      if(strcmp(buffer, "OFF")!=0){
-        printf("Error de formato\n");
-        exit(EXIT_FAILURE);
-      }
+    for(int i = 0; i < nverts; i++){
+      Vertex vertex;
+      fscanf(fid, "%f %f %f", &vertex.x, &vertex.y, &vertex.z);
 
-      int nverts, ntriang, nedges;
-      fscanf(fid, "%d %d %d", &nverts, &ntriang, &nedges);
-      printf("%d, %d, %d\n", nverts, ntriang, nedges);
-
-      TriangleMesh mesh;
-
-      for(int i = 0; i < nverts; i++){
-        Vertex vertex;
-        fscanf(fid, "%f %f %f", &vertex.x, &vertex.y, &vertex.z);
-
-        mesh.center += vertex;
-        mesh.vertices.push_back(vertex);
-      }
-
-      for(int i = 0; i < ntriang; i++) {
-        Face face;
-        int nv;
-        fscanf(fid, "%d %d %d %d", &nv, &face.indices[0],
-                                        &face.indices[1],
-                                        &face.indices[2]);
-        mesh.faces.push_back(face);
-      }
-
-      fclose(fid);
-      mesh.center /= nverts;
-
-      float maxx = -1.0e-10, maxy= -1.0e-10, maxz= -1.0e-10;
-      float minx = 1.0e10, miny= 1.0e10, minz= 1.0e10;
-
-      for(int i = 0; i < mesh.vertices.size(); i++){
-        if(mesh.vertices[i].x < minx)
-          minx = mesh.vertices[i].x;
-        if(mesh.vertices[i].x > maxx)
-          maxx = mesh.vertices[i].x;
-        if(mesh.vertices[i].y < miny)
-          miny = mesh.vertices[i].y;
-        if(mesh.vertices[i].y > maxy)
-          maxy = mesh.vertices[i].y;
-        if(mesh.vertices[i].z < minz)
-          minz = mesh.vertices[i].z;
-        if(mesh.vertices[i].z > maxz)
-          maxz = mesh.vertices[i].z;
-      }
-
-      unsigned int p0, p1, p2;
-      //Computar normales de los triángulos
-      for(int i = 0; i < mesh.faces.size(); i++){
-        p0 = mesh.faces[i].indices[0];
-        p1 = mesh.faces[i].indices[1];
-        p2 = mesh.faces[i].indices[2];
-
-        Vec3f A = mesh.vertices[p1] - mesh.vertices[p0];
-        Vec3f B = mesh.vertices[p2] - mesh.vertices[p0];
-
-        Vec3f C = A.cross(B);
-        mesh.faces[i].normal = C;
-
-        C.normalize();
-        mesh.vertices[p0].normal += C;   mesh.vertices[p0].numTA++;
-        mesh.vertices[p1].normal += C;   mesh.vertices[p1].numTA++;
-        mesh.vertices[p2].normal += C;   mesh.vertices[p2].numTA++;
-      }
-
-      for(int i = 0; i < mesh.vertices.size(); i++){
-        mesh.vertices[i].normal /= mesh.vertices[i].numTA;
-        mesh.vertices[i].normal.normalize();
-      }
-
-      float diag = sqrt((maxx-minx)*(maxx-minx) +
-                        (maxy-miny)*(maxy-miny)+
-                        (maxz-minz)*(maxz-minz));
-      mesh.scale = 2.0/diag;
-
-      return mesh;
+      mesh.center += vertex;
+      mesh.vertices.push_back(vertex);
     }
+
+    for(int i = 0; i < ntriang; i++) {
+      Face face;
+      int nv;
+      fscanf(fid, "%d %d %d %d", &nv, &face.indices[0],
+                                      &face.indices[1],
+                                      &face.indices[2]);
+      mesh.faces.push_back(face);
+    }
+
+    fclose(fid);
+    mesh.center /= nverts;
+
+    float maxx = -1.0e-10, maxy= -1.0e-10, maxz= -1.0e-10;
+    float minx = 1.0e10, miny= 1.0e10, minz= 1.0e10;
+
+    for(int i = 0; i < mesh.vertices.size(); i++){
+      if(mesh.vertices[i].x < minx)
+        minx = mesh.vertices[i].x;
+      if(mesh.vertices[i].x > maxx)
+        maxx = mesh.vertices[i].x;
+      if(mesh.vertices[i].y < miny)
+        miny = mesh.vertices[i].y;
+      if(mesh.vertices[i].y > maxy)
+        maxy = mesh.vertices[i].y;
+      if(mesh.vertices[i].z < minz)
+        minz = mesh.vertices[i].z;
+      if(mesh.vertices[i].z > maxz)
+        maxz = mesh.vertices[i].z;
+    }
+
+    unsigned int p0, p1, p2;
+    //Computar normales de los triángulos
+    for(int i = 0; i < mesh.faces.size(); i++){
+      p0 = mesh.faces[i].indices[0];
+      p1 = mesh.faces[i].indices[1];
+      p2 = mesh.faces[i].indices[2];
+
+      Vec3f A = mesh.vertices[p1] - mesh.vertices[p0];
+      Vec3f B = mesh.vertices[p2] - mesh.vertices[p0];
+
+      Vec3f C = A.cross(B);
+      mesh.faces[i].normal = C;
+
+      C.normalize();
+      mesh.vertices[p0].normal += C;   mesh.vertices[p0].numTA++;
+      mesh.vertices[p1].normal += C;   mesh.vertices[p1].numTA++;
+      mesh.vertices[p2].normal += C;   mesh.vertices[p2].numTA++;
+    }
+
+    for(int i = 0; i < mesh.vertices.size(); i++){
+      mesh.vertices[i].normal /= mesh.vertices[i].numTA;
+      mesh.vertices[i].normal.normalize();
+    }
+
+    float diag = sqrt((maxx-minx)*(maxx-minx) +
+                      (maxy-miny)*(maxy-miny)+
+                      (maxz-minz)*(maxz-minz));
+    mesh.scale = 2.0/diag;
+
+    return mesh;
+  }
 };
 
 //[comment]
