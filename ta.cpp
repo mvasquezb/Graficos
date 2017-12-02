@@ -30,6 +30,8 @@
 #define INFINITY 1e8
 #endif
 
+#define DEFAULT_CENTER 123123
+
 template <typename T> class Vec3 {
 public:
   T x, y, z;
@@ -96,6 +98,17 @@ public:
     return *this;
   }
 
+  //[comment]
+  // Added: Allow comparison with other vectors
+  //[/comment]
+  bool operator==(const Vec3<T> &v) const {
+    return x == v.x && y == v.y && z == v.z;
+  }
+
+  bool operator!=(const Vec3<T> &v) const {
+    return !(*this == v);
+  }
+
   Vec3<T> operator-() const { return Vec3<T>(-x, -y, -z); }
 
   T length2() const { return x * x + y * y + z * z; }
@@ -111,8 +124,10 @@ public:
 typedef Vec3<float> Vec3f;
 
 class Drawable {
-public:
+protected:
   Vec3f _center;                      /// position of the sphere
+
+public:
   Vec3f surfaceColor, emissionColor; /// surface color and emission (light)
   float transparency, reflection;    /// surface transparency and reflectivity
 
@@ -126,8 +141,12 @@ public:
   }
 
   virtual bool intersect(const Vec3f &rayorig, const Vec3f &raydir, float &t0,
-                 float &t1) const {
+                         float &t1) const {
     return true;
+  }
+
+  virtual void move(Vec3f newCenter) {
+    _center = newCenter;
   }
 };
 
@@ -142,7 +161,7 @@ public:
   // Compute a ray-sphere intersection using the geometric solution
   //[/comment]
   bool intersect(const Vec3f &rayorig, const Vec3f &raydir, float &t0,
-                 float &t1) const {
+                 float &t1) const override {
     Vec3f l = center() - rayorig;
     float tca = l.dot(raydir);
     if (tca < 0)
@@ -177,7 +196,8 @@ public:
   //[comment]
   // Compute ray-triangle intersection
   //[/comment]
-  bool intersect(const Vec3f &rayorig, const Vec3f &raydir, float& t) const {
+  bool intersect(const Vec3f &rayorig, const Vec3f &raydir, float& t,
+                 float& t1) const override {
     float area2 = normal.length();
 
     //[comment]
@@ -229,6 +249,14 @@ public:
 
     return true;
   }
+
+  void move(Vec3f newCenter) override {
+    Vec3f offset = newCenter - center();
+    for (auto& vertex : vertices) {
+      vertex += offset;
+    }
+    _center = newCenter;
+  }
 };
 
 class Face {
@@ -237,14 +265,14 @@ public:
     Vec3f normal;
 };
 
-class TriangleMesh: public Drawable {
+class TriangleMesh : public Drawable {
 public:
   //Informacion de estructura
   std::vector<Vertex> vertices;
   std::vector<Face> faces;
 
   //Información para transformación inicial
-  Vertex center;
+  // Vertex center;
   float scale;
 
   //Matriz de transformación
@@ -272,7 +300,7 @@ public:
       const auto& face = faces[i];
       Triangle triangle(face.indices[0], face.indices[1], face.indices[2]);
       float tFront = INFINITY, tBack;
-      if (triangle.intersect(rayorig, raydir, tFront) && tFront < t0) {
+      if (triangle.intersect(rayorig, raydir, tFront, tBack) && tFront < t0) {
         t0 = tFront;
         triIndex = i;
         intersects |= true;
@@ -281,7 +309,15 @@ public:
     return intersects;
   }
 
-  static TriangleMesh fromOFF(const char *filename) {
+  void move(Vec3f newCenter) override {
+    Vec3f offset = newCenter - center();
+    for (auto& vertex : vertices) {
+      vertex += offset;
+    }
+    _center = newCenter;
+  }
+
+  static TriangleMesh fromOFF(const char *filename, Vec3f center = DEFAULT_CENTER) {
     FILE* fid = fopen(filename, "rt");
 
     //Leer formato
@@ -303,7 +339,7 @@ public:
       Vertex vertex;
       fscanf(fid, "%f %f %f", &vertex.x, &vertex.y, &vertex.z);
 
-      mesh.center += vertex;
+      mesh._center += vertex;
       mesh.vertices.push_back(vertex);
     }
 
@@ -317,7 +353,12 @@ public:
     }
 
     fclose(fid);
-    mesh.center /= nverts;
+    mesh._center /= nverts;
+
+    // Calculate new center. Only if center
+    if (center != DEFAULT_CENTER && center != mesh.center()) {
+      mesh.move(center);
+    }
 
     float maxx = -1.0e-10, maxy= -1.0e-10, maxz= -1.0e-10;
     float minx = 1.0e10, miny= 1.0e10, minz= 1.0e10;
@@ -525,7 +566,7 @@ void render(const std::vector<Sphere> &spheres) {
 // we render that scene, by calling the render() function.
 //[/comment]
 int main(int argc, char **argv) {
-  // TriangleMesh mesh = TriangleMesh::fromOFF("NR0.off");
+  TriangleMesh mesh = TriangleMesh::fromOFF("NR0.off", Vec3f(0.0, -10004, -10));
   // srand48(13);
   std::vector<Sphere> spheres;
   // position, radius, surface color, reflectivity, transparency, emission color
